@@ -1,8 +1,8 @@
 import axios from 'axios';
 import RNFetchBlob from 'rn-fetch-blob';
 import DeviceInfo from 'react-native-device-info';
-const common_url = global.common_url; //服务器地址
-let token = ''; //用户登陆后返回的token
+import GlobalVar from '../utils/global-var.js';
+const common_url = GlobalVar.common_url; //服务器地址
 /**
  * 使用fetch实现图片上传
  * @param {string} url 接口地址
@@ -17,8 +17,7 @@ function uploadImage(url, params) {
       type: 'multipart/form-data',
       name: params.substr(params.lastIndexOf('/') + 1),
     };
-    let deviceName = DeviceInfo.getDeviceNameSync(),
-      deviceID = DeviceInfo.getDeviceId();
+    let deviceName = DeviceInfo.getDeviceNameSync();
     formData.append('uploadFile', file);
     formData.append('device', deviceName);
     axios
@@ -29,7 +28,7 @@ function uploadImage(url, params) {
         },
       })
       .then(function (response) {
-        console.log(response.data);
+        // console.log(response.data);
         resolve(response);
       })
       .catch(function (error) {

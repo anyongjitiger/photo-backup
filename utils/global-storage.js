@@ -21,4 +21,11 @@ const getData = async () => {
   }
 };
 
-export {storeData, getData};
+const clearStorage = async () => {
+  try {
+    await AsyncStorage.clear()
+  } catch (e) {
+  }
+}
+
+export { storeData, getData, clearStorage };

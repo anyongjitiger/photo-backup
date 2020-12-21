@@ -1,4 +1,5 @@
-import React, {Component} from 'react';
+// eslint-disable-next-line prettier/prettier
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ToastExample from '../ToastExample';
 import {
@@ -15,49 +16,47 @@ import {
 } from 'react-native';
 import uploadImage from '../utils/upload';
 import {getData} from '../utils/global-storage';
-const common_url = global.common_url;
-export default class AlbumExample extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      photoList: [],
-      videoList: [],
-      remotePhotoList: [],
-      granted: false,
-    };
-  }
+import GlobalVar from '../utils/global-var.js';
+const common_url = GlobalVar.common_url;
 
-  componentDidMount() {
+export default function AlbumExample({ navigation }) {
+  const [photoList, setPhotoList] = useState([]);
+  const [videoList, setVideoList] = useState([]);
+  const [remotePhotoList, setRemotePhotoList] = useState([]);
+  const [granted, setGranted] = useState(false);
+
+  useEffect(() => {
     getData().then((v) => {
-      console.log(v);
+      console.log('token:', v);
       if (v === undefined) {
-        console.log(this.props);
-        // this.props.navigation.navigate('Login');
+        navigation.navigate('Login');
+      } else {
+        axios.defaults.headers.common['Authorization'] = v;
+        if (Platform.OS === 'android') {
+          requestReadPermission();
+        } else {
+          requestReadPermissionIOS();
+        }
       }
     });
-    if (Platform.OS === 'android') {
-      this.requestReadPermission();
-    } else {
-      this.requestReadPermissionIOS();
-    }
-  }
+  });
 
-  goBack = () => {
-    this.props.navigation.goBack();
+  const goBack = () => {
+    navigation.goBack();
   };
 
-  requestReadPermission = async () => {
+  const requestReadPermission = async () => {
     try {
       //返回string类型
-      const granted = await PermissionsAndroid.request(
+      const _granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
         {
           title: '权限申请',
           message: '该功能需要获取系统存储空间权限 ',
         },
       );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        this.setState({granted: true});
+      if (_granted === PermissionsAndroid.RESULTS.GRANTED) {
+        setGranted(true);
       } else {
         console.log('获取读写权限失败');
         Alert.alert(
@@ -68,13 +67,13 @@ export default class AlbumExample extends Component {
               text: '取消',
               style: 'cancel',
               onPress: () => {
-                this.goBack();
+                goBack();
               },
             },
             {
               text: '确定',
               onPress: () => {
-                this.goBack();
+                goBack();
               },
             },
           ],
@@ -86,7 +85,7 @@ export default class AlbumExample extends Component {
     }
   };
 
-  requestReadPermissionIOS = () => {
+  const requestReadPermissionIOS = () => {
     CameraRoll.getPhotos({
       first: 10000,
       assetType: 'Photos',
@@ -101,10 +100,7 @@ export default class AlbumExample extends Component {
             fliename: edges[i].node.image.fliename,
           });
         }
-        this.setState({
-          //通过打印的object，找到如下图片路径
-          photoList: photos,
-        });
+        setPhotoList(photos);
       },
       (error) => {
         //失败的回调
@@ -116,13 +112,13 @@ export default class AlbumExample extends Component {
               text: '取消',
               style: 'cancel',
               onPress: () => {
-                this.goBack();
+                goBack();
               },
             },
             {
               text: '确定',
               onPress: () => {
-                this.goBack();
+                goBack();
               },
             },
           ],
@@ -133,7 +129,7 @@ export default class AlbumExample extends Component {
     );
   };
 
-  getRemotePhotos = () => {
+  const getRemotePhotos = () => {
     axios
       .get(common_url + 'albums/all', {
         headers: {
@@ -148,26 +144,23 @@ export default class AlbumExample extends Component {
           for (let v of dataArray) {
             tempAry.push(`${common_url}show//${v.FileName}`);
           }
-          this.setState({
-            remotePhotoList: tempAry,
-          });
+          setRemotePhotoList(tempAry);
+        } else {
+          console.log(response);
         }
       })
       .catch(function (error) {
-        // err
-        console.log(error);
+        console.log("getRemotePhotos: ", error);
       })
       .then(function () {
         // always executed
       });
   };
 
-  getLocalPhotos = () => {
+  const getLocalPhotos = () => {
     NativeModules.GetLocalPhotos.getAllPhotoInfo().then((res) => {
       const resp = JSON.parse(res);
-      this.setState({
-        photoList: JSON.parse(res),
-      });
+      setPhotoList(resp);
       /* resp.forEach((p) => {
         uploadImage('upload/', p.path)
           .then((r) => {
@@ -190,7 +183,7 @@ export default class AlbumExample extends Component {
         });
       });
       Promise.all(promises).then(() => {
-        this.getRemotePhotos();
+        getRemotePhotos();
         ToastExample.show('同步成功！', ToastExample.SHORT);
       });
       /* uploadImage('upload/', JSON.parse(res)[3].path)
@@ -204,19 +197,15 @@ export default class AlbumExample extends Component {
     /* const {GetLocalPhotos} = NativeModules;
     GetLocalPhotos.getAllPhotoInfo().then((res) => {
       console.log(res);
-      this.setState({
-        photoList: JSON.parse(res),
-      });
+      setPhotoList(JSON.parse(res));
     }); */
   };
 
-  getLocalVideos = () => {
+  const getLocalVideos = () => {
     NativeModules.GetLocalVideos.getAllVideoInfo()
       .then((res) => {
         const resp = JSON.parse(res);
-        this.setState({
-          videoList: resp,
-        });
+        setVideoList(resp);
         const promises = resp.map((p) => {
           return new Promise((resolve, reject) => {
             uploadImage('upload/', p.path)
@@ -230,7 +219,7 @@ export default class AlbumExample extends Component {
           });
         });
         Promise.all(promises).then(() => {
-          // this.getRemotePhotos();
+          // getRemotePhotos();
           ToastExample.show('同步视频成功！', ToastExample.SHORT);
         });
       })
@@ -239,55 +228,53 @@ export default class AlbumExample extends Component {
       });
   };
 
-  onPressSync = () => {
-    this.getLocalPhotos();
-    this.getLocalVideos();
+  const onPressSync = () => {
+    getLocalPhotos();
+    getLocalVideos();
   };
 
-  render() {
-    const views = this.state.photoList.map((p, index) => {
-      return (
-        <View style={styles.photoView} key={index}>
-          <Image style={styles.photo} source={{uri: p.path}} />
-        </View>
-      );
-    });
-    const remotePhotos = this.state.remotePhotoList.map((p, index) => {
-      return (
-        <View style={styles.photoView} key={index}>
-          <Image style={styles.photo} source={{uri: p}} />
-        </View>
-      );
-    });
-    const VideoThumbs = this.state.videoList.map((p, index) => {
-      return (
-        <View style={styles.photoView} key={index}>
-          <Image style={styles.photo} source={{uri: p.thumbPath}} />
-        </View>
-      );
-    });
+  const views = photoList.map((p, index) => {
     return (
-      <View>
-        <View style={{height: 45}}>
-          <Button
-            onPress={this.onPressSync}
-            title="BACK UP"
-            color="#841584"
-            disabled={!this.state.granted}
-          />
-          <Button
-            title="Go to Login"
-            onPress={() => this.props.navigation.navigate('Login')}
-          />
-        </View>
-        <ScrollView style={styles.scrollView}>
-          <View style={styles.photos}>{views}</View>
-          <View style={styles.videos}>{VideoThumbs}</View>
-          {/* <View style={styles.photos}>{remotePhotos}</View> */}
-        </ScrollView>
+      <View style={styles.photoView} key={index}>
+        <Image style={styles.photo} source={{uri: p.path}} />
       </View>
     );
-  }
+  });
+  const remotePhotos = remotePhotoList.map((p, index) => {
+    return (
+      <View style={styles.photoView} key={index}>
+        <Image style={styles.photo} source={{uri: p}} />
+      </View>
+    );
+  });
+  const VideoThumbs = videoList.map((p, index) => {
+    return (
+      <View style={styles.photoView} key={index}>
+        <Image style={styles.photo} source={{uri: p.thumbPath}} />
+      </View>
+    );
+  });
+  return (
+    <View>
+      <View style={{ height: 80 }}>
+        <Button
+          onPress={onPressSync}
+          title="BACK UP"
+          color="#841584"
+          disabled={!granted}
+        />
+        {/* <Button
+          title="Go to Login"
+          onPress={() => navigation.navigate('Login')}
+        /> */}
+      </View>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.photos}>{views}</View>
+        <View style={styles.videos}>{VideoThumbs}</View>
+        {/* <View style={styles.photos}>{remotePhotos}</View> */}
+      </ScrollView>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
