@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {StyleSheet, Button, TextInput, View} from 'react-native';
 import axios from 'axios';
+import ToastExample from '../ToastExample';
 import GlobalVar from '../utils/global-var.js';
 import { storeData } from '../utils/global-storage';
 const common_url = GlobalVar.common_url;
@@ -26,6 +27,7 @@ export default function Login({ navigation }) {
       .catch(function (error) {
         // error
         console.log('login error: ', error);
+        ToastExample.show('该号码已过期！', ToastExample.LONG);
       });
   };
   return (

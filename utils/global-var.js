@@ -1,3 +1,3 @@
 export default {
-    common_url: 'http://172.29.176.1:8000/',
+    common_url: 'http://10.0.2.2:8000/',
 };

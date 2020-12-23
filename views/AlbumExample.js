@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import uploadImage from '../utils/upload';
-import {getData} from '../utils/global-storage';
+import { getData } from '../utils/global-storage';
 import GlobalVar from '../utils/global-var.js';
 const common_url = GlobalVar.common_url;
 
@@ -26,20 +26,12 @@ export default function AlbumExample({ navigation }) {
   const [granted, setGranted] = useState(false);
 
   useEffect(() => {
-    getData().then((v) => {
-      console.log('token:', v);
-      if (v === undefined) {
-        navigation.navigate('Login');
-      } else {
-        axios.defaults.headers.common['Authorization'] = v;
-        if (Platform.OS === 'android') {
-          requestReadPermission();
-        } else {
-          requestReadPermissionIOS();
-        }
-      }
-    });
-  });
+    if (Platform.OS === 'android') {
+      requestReadPermission();
+    } else {
+      requestReadPermissionIOS();
+    }
+  }, []);
 
   const goBack = () => {
     navigation.goBack();
@@ -56,6 +48,8 @@ export default function AlbumExample({ navigation }) {
         },
       );
       if (_granted === PermissionsAndroid.RESULTS.GRANTED) {
+        getLocalPhotos();
+        getLocalVideos();
         setGranted(true);
       } else {
         console.log('获取读写权限失败');
@@ -77,7 +71,7 @@ export default function AlbumExample({ navigation }) {
               },
             },
           ],
-          {cancelable: false},
+          { cancelable: false },
         );
       }
     } catch (err) {
@@ -122,7 +116,7 @@ export default function AlbumExample({ navigation }) {
               },
             },
           ],
-          {cancelable: false},
+          { cancelable: false },
         );
         console.log(error.message);
       },
@@ -161,44 +155,9 @@ export default function AlbumExample({ navigation }) {
     NativeModules.GetLocalPhotos.getAllPhotoInfo().then((res) => {
       const resp = JSON.parse(res);
       setPhotoList(resp);
-      /* resp.forEach((p) => {
-        uploadImage('upload/', p.path)
-          .then((r) => {
-            console.log(r);
-          })
-          .catch((err) => {
-            console.log('err', err);
-          });
-      }); */
-      const promises = resp.map((p) => {
-        return new Promise((resolve, reject) => {
-          uploadImage('upload/', p.path)
-            .then((r) => {
-              resolve(r);
-            })
-            .catch((err) => {
-              console.log('err', err);
-              reject(err);
-            });
-        });
-      });
-      Promise.all(promises).then(() => {
-        getRemotePhotos();
-        ToastExample.show('同步成功！', ToastExample.SHORT);
-      });
-      /* uploadImage('upload/', JSON.parse(res)[3].path)
-        .then((r) => {
-          console.log(r);
-        })
-        .catch((err) => {
-          console.log('err', err);
-        }); */
+    }).catch((err) => {
+      console.log('err', err);
     });
-    /* const {GetLocalPhotos} = NativeModules;
-    GetLocalPhotos.getAllPhotoInfo().then((res) => {
-      console.log(res);
-      setPhotoList(JSON.parse(res));
-    }); */
   };
 
   const getLocalVideos = () => {
@@ -206,22 +165,6 @@ export default function AlbumExample({ navigation }) {
       .then((res) => {
         const resp = JSON.parse(res);
         setVideoList(resp);
-        const promises = resp.map((p) => {
-          return new Promise((resolve, reject) => {
-            uploadImage('upload/', p.path)
-              .then((r) => {
-                resolve(r);
-              })
-              .catch((err) => {
-                console.log('err', err);
-                reject(err);
-              });
-          });
-        });
-        Promise.all(promises).then(() => {
-          // getRemotePhotos();
-          ToastExample.show('同步视频成功！', ToastExample.SHORT);
-        });
       })
       .catch((err) => {
         console.log('err', err);
@@ -229,34 +172,47 @@ export default function AlbumExample({ navigation }) {
   };
 
   const onPressSync = () => {
-    getLocalPhotos();
-    getLocalVideos();
+    const promises = [...photoList, ...videoList].map((p) => {
+      return new Promise((resolve, reject) => {
+        uploadImage('upload/', p.path)
+          .then((r) => {
+            resolve(r);
+          })
+          .catch((err) => {
+            console.log('err', err);
+            reject(err);
+          });
+      });
+    });
+    Promise.all(promises).then(() => {
+      ToastExample.show('同步成功！', ToastExample.SHORT);
+    });
   };
 
   const views = photoList.map((p, index) => {
     return (
       <View style={styles.photoView} key={index}>
-        <Image style={styles.photo} source={{uri: p.path}} />
+        <Image style={styles.photo} source={{ uri: p.path }} />
       </View>
     );
   });
   const remotePhotos = remotePhotoList.map((p, index) => {
     return (
       <View style={styles.photoView} key={index}>
-        <Image style={styles.photo} source={{uri: p}} />
+        <Image style={styles.photo} source={{ uri: p }} />
       </View>
     );
   });
   const VideoThumbs = videoList.map((p, index) => {
     return (
       <View style={styles.photoView} key={index}>
-        <Image style={styles.photo} source={{uri: p.thumbPath}} />
+        <Image style={styles.photo} source={{ uri: p.thumbPath }} />
       </View>
     );
   });
   return (
     <View>
-      <View style={{ height: 80 }}>
+      <View style={{ height: 40 }}>
         <Button
           onPress={onPressSync}
           title="BACK UP"
