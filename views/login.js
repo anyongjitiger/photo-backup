@@ -2,15 +2,24 @@ import React, { useState } from 'react';
 import {StyleSheet, Button, TextInput, View} from 'react-native';
 import axios from 'axios';
 import ToastExample from '../ToastExample';
-import GlobalVar from '../utils/global-var.js';
+import GlobalVar, { setCommonUrl } from '../utils/global-var.js';
 import { storeData } from '../utils/global-storage';
 const common_url = GlobalVar.common_url;
 export default function Login({ navigation }) {
   const [pin, setPin] = useState('');
+  const [url, setUrl] = useState(common_url);
+  const [urlChanged, setUrlChanged] = useState(false);
   const login = (event) => {
     setPin(event.nativeEvent.text);
   };
+  const changeUrl = (event) => {
+    setUrlChanged(true);
+    setUrl(event.nativeEvent.text);
+  };
   const onPress = () => {
+    if (urlChanged) {
+      setCommonUrl(url);
+    }
     axios
       .post(common_url + 'login', {
         pin: pin,
@@ -37,6 +46,12 @@ export default function Login({ navigation }) {
         value={pin}
         onChange={login}
         placeholder="PIN CODE"
+      />
+      <TextInput
+        style={{ height: 40 }}
+        value={url}
+        onChange={changeUrl}
+        placeholder="URL"
       />
       <Button onPress={onPress} title="Login" color="#841584" />
     </View>

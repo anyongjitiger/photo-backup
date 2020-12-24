@@ -48,8 +48,7 @@ export default function AlbumExample({ navigation }) {
         },
       );
       if (_granted === PermissionsAndroid.RESULTS.GRANTED) {
-        getLocalPhotos();
-        getLocalVideos();
+        sync();
         setGranted(true);
       } else {
         console.log('获取读写权限失败');
@@ -171,7 +170,7 @@ export default function AlbumExample({ navigation }) {
       });
   };
 
-  const onPressSync = () => {
+  const onPressBackup = () => {
     const promises = [...photoList, ...videoList].map((p) => {
       return new Promise((resolve, reject) => {
         uploadImage('upload/', p.path)
@@ -187,6 +186,11 @@ export default function AlbumExample({ navigation }) {
     Promise.all(promises).then(() => {
       ToastExample.show('同步成功！', ToastExample.SHORT);
     });
+  };
+
+  const sync = () => {
+    getLocalPhotos();
+    getLocalVideos();
   };
 
   const views = photoList.map((p, index) => {
@@ -206,18 +210,23 @@ export default function AlbumExample({ navigation }) {
   const VideoThumbs = videoList.map((p, index) => {
     return (
       <View style={styles.photoView} key={index}>
-        <Image style={styles.photo} source={{ uri: p.thumbPath }} />
+        <Image style={styles.photo}
+          source={{ uri: `data:image/jpeg;base64,${p.thumbPath}` }} />
       </View>
     );
   });
   return (
     <View>
-      <View style={{ height: 40 }}>
+      <View style={{ height: 80 }}>
         <Button
-          onPress={onPressSync}
-          title="BACK UP"
+          onPress={onPressBackup}
+          title="上传"
           color="#841584"
           disabled={!granted}
+        />
+        <Button
+          onPress={sync}
+          title="同步相册"
         />
         {/* <Button
           title="Go to Login"

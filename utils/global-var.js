@@ -1,3 +1,7 @@
-export default {
-    common_url: 'http://10.0.2.2:8000/',
+const CONFIG = {
+    common_url: 'http://192.168.3.133:8000/',
 };
+export default CONFIG;
+export function setCommonUrl(url) {
+    CONFIG.common_url = `http://&{url}:8000/`;
+}
