@@ -18,7 +18,7 @@ const App: () => React$Node = () => {
   // ToastExample.show('Awesome', ToastExample.SHORT);
   useEffect(() => {
     SplashScreen.hide();
-    clearStorage();
+    // clearStorage();
   });
   return (
     <>

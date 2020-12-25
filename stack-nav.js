@@ -11,13 +11,13 @@ function MyStack() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: '主页' }} />
         <Stack.Screen
           name="PhotoWall"
           component={PhotoWall}
-          options={{ title: 'Album' }}
+          options={{ title: '相册' }}
         />
-        <Stack.Screen name="Login" component={Login} />
+        <Stack.Screen name="Login" component={Login} options={{ title: '设置' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
