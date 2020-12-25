@@ -5,7 +5,6 @@ import ToastExample from '../ToastExample';
 import {
   NativeModules,
   PermissionsAndroid,
-  CameraRoll,
   StyleSheet,
   ScrollView,
   Alert,
@@ -14,6 +13,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
+import CameraRoll from "@react-native-community/cameraroll";
 import uploadImage from '../utils/upload';
 import { getData } from '../utils/global-storage';
 import GlobalVar from '../utils/global-var.js';
@@ -153,16 +153,31 @@ export default function AlbumExample({ navigation }) {
   const getLocalPhotos = () => {
     NativeModules.GetLocalPhotos.getAllPhotoInfo().then((res) => {
       const resp = JSON.parse(res);
+      console.log("photo", resp);
       setPhotoList(resp);
     }).catch((err) => {
       console.log('err', err);
     });
+  };
+  const getLocalPhotos2 = () => {
+    console.log(CameraRoll);
+    CameraRoll.getPhotos({
+      first: 40,
+      assetType: 'All',
+    })
+      .then(r => {
+        console.log(r.edges);
+      })
+      .catch((err) => {
+        //Error Loading Images
+      });
   };
 
   const getLocalVideos = () => {
     NativeModules.GetLocalVideos.getAllVideoInfo()
       .then((res) => {
         const resp = JSON.parse(res);
+        console.log("video", resp);
         setVideoList(resp);
       })
       .catch((err) => {
@@ -191,6 +206,7 @@ export default function AlbumExample({ navigation }) {
   const sync = () => {
     getLocalPhotos();
     getLocalVideos();
+    getLocalPhotos2();
   };
 
   const views = photoList.map((p, index) => {

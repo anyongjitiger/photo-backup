@@ -4,14 +4,10 @@ import android.app.Application;
 import android.content.Context;
 import com.facebook.react.PackageList;
 import com.facebook.react.ReactApplication;
-import com.learnium.RNDeviceInfo.RNDeviceInfo;
-import com.RNFetchBlob.RNFetchBlobPackage;
-import org.devio.rn.splashscreen.SplashScreenReactPackage;
 import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.ReactNativeHost;
 import com.facebook.react.ReactPackage;
 import com.facebook.soloader.SoLoader;
-import com.imagepicker.ImagePickerPackage;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
@@ -29,9 +25,7 @@ public class MainApplication extends Application implements ReactApplication {
           @SuppressWarnings("UnnecessaryLocalVariable")
           List<ReactPackage> packages = new PackageList(this).getPackages();
           // Packages that cannot be autolinked yet can be added manually here, for example:
-          //  packages.add(new SplashScreenReactPackage());
-          // packages.add(new ImagePickerPackage());
-          packages.add(new CustomToastPackage()); 
+          packages.add(new CustomToastPackage());
           return packages;
         }
 

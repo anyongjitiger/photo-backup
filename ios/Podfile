@@ -83,6 +83,8 @@ target 'AwesomeApp' do
 
   pod 'RNDeviceInfo', :path => '../node_modules/react-native-device-info'
 
+  pod 'react-native-cameraroll', :path => '../node_modules/@react-native-community/cameraroll'
+
   target 'AwesomeAppTests' do
     inherit! :complete
     # Pods for testing
