@@ -1,5 +1,5 @@
 const CONFIG = {
-    common_url: 'http://192.168.3.132:8000/',
+    common_url: 'http://192.168.1.76:8000/',
 };
 export default CONFIG;
 export function setCommonUrl(url) {

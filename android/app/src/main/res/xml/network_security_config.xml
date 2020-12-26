@@ -7,6 +7,6 @@
     <domain includeSubdomains="false">172.19.32.1</domain>
     <domain includeSubdomains="true">dev.local</domain>
     <domain includeSubdomains="false">127.0.0.1</domain>
-    <domain includeSubdomains="false">192.168.3.133</domain>
+    <domain includeSubdomains="false">192.168.1.76</domain>
   </domain-config>
 </network-security-config>

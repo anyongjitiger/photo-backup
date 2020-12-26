@@ -5,7 +5,6 @@ import { getData } from '../utils/global-storage';
 export default function HomeScreen({ navigation }) {
     useEffect(() => {
         getData().then((v) => {
-            console.log('token:', v);
             if (v === undefined) {
                 navigation.navigate('Login');
             } else {
