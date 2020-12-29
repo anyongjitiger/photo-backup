@@ -12,8 +12,11 @@ import {
   Button,
   Image,
   Platform,
+  Modal,
+  Text,
 } from 'react-native';
 import CameraRoll from "@react-native-community/cameraroll";
+import * as Progress from 'react-native-progress';
 import uploadImage from '../utils/upload';
 import { getData } from '../utils/global-storage';
 import GlobalVar from '../utils/global-var.js';
@@ -21,10 +24,11 @@ const common_url = GlobalVar.common_url;
 
 export default function AlbumExample({ navigation }) {
   const [photoList, setPhotoList] = useState([]);
+  const [imageList, setImageList] = useState([]);
   const [videoList, setVideoList] = useState([]);
   const [remotePhotoList, setRemotePhotoList] = useState([]);
   const [granted, setGranted] = useState(false);
-
+  const [modalVisible, setModalVisible] = useState(false);
   useEffect(() => {
     if (Platform.OS === 'android') {
       requestReadPermission();
@@ -160,13 +164,13 @@ export default function AlbumExample({ navigation }) {
     });
   };
   const getLocalPhotos2 = () => {
-    console.log(CameraRoll);
     CameraRoll.getPhotos({
       first: 40,
       assetType: 'All',
     })
       .then(r => {
         console.log(r.edges);
+        setImageList(r.edges);
       })
       .catch((err) => {
         //Error Loading Images
@@ -186,9 +190,10 @@ export default function AlbumExample({ navigation }) {
   };
 
   const onPressBackup = () => {
-    const promises = [...photoList, ...videoList].map((p) => {
+    setModalVisible(true);
+    const promises = imageList.map((p) => {
       return new Promise((resolve, reject) => {
-        uploadImage('upload/', p.path)
+        uploadImage('upload/', p.node.image.uri)
           .then((r) => {
             resolve(r);
           })
@@ -199,13 +204,14 @@ export default function AlbumExample({ navigation }) {
       });
     });
     Promise.all(promises).then(() => {
+      setModalVisible(false);
       ToastExample.show('同步成功！', ToastExample.SHORT);
     });
   };
 
   const sync = () => {
-    getLocalPhotos();
-    getLocalVideos();
+    // getLocalPhotos();
+    // getLocalVideos();
     getLocalPhotos2();
   };
 
@@ -231,6 +237,14 @@ export default function AlbumExample({ navigation }) {
       </View>
     );
   });
+
+  const Images = imageList.map((p, index) => {
+    return (
+      <View style={styles.photoView} key={index}>
+        <Image style={styles.photo} source={{ uri: p.node.image.uri }} />
+      </View>
+    );
+  });
   return (
     <View>
       <View style={{ height: 80 }}>
@@ -252,8 +266,25 @@ export default function AlbumExample({ navigation }) {
       <ScrollView style={styles.scrollView}>
         <View style={styles.photos}>{views}</View>
         <View style={styles.videos}>{VideoThumbs}</View>
+        <View style={styles.photos}>{Images}</View>
         {/* <View style={styles.photos}>{remotePhotos}</View> */}
       </ScrollView>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          Alert.alert("Modal has been closed.");
+        }}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text>aaa</Text>
+            <Progress.Bar progress={0.3} width={200} />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -285,5 +316,27 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: 120,
+  },
+
+  centeredView: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 22
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 35,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5
   },
 });
