@@ -25,6 +25,8 @@ const common_url = GlobalVar.common_url;
 export default function AlbumExample({ navigation }) {
   const [photoList, setPhotoList] = useState([]);
   const [imageList, setImageList] = useState([]);
+  const [imageCount, setImageCount] = useState(0);
+  const [imageUploaded, setImageUploaded] = useState(0);
   const [videoList, setVideoList] = useState([]);
   const [remotePhotoList, setRemotePhotoList] = useState([]);
   const [granted, setGranted] = useState(false);
@@ -157,7 +159,6 @@ export default function AlbumExample({ navigation }) {
   const getLocalPhotos = () => {
     NativeModules.GetLocalPhotos.getAllPhotoInfo().then((res) => {
       const resp = JSON.parse(res);
-      console.log("photo", resp);
       setPhotoList(resp);
     }).catch((err) => {
       console.log('err', err);
@@ -167,10 +168,11 @@ export default function AlbumExample({ navigation }) {
     CameraRoll.getPhotos({
       first: 40,
       assetType: 'All',
+      include: ['filename', 'fileSize']
     })
       .then(r => {
-        console.log(r.edges);
         setImageList(r.edges);
+        setImageCount(r.edges.length);
       })
       .catch((err) => {
         //Error Loading Images
@@ -181,20 +183,22 @@ export default function AlbumExample({ navigation }) {
     NativeModules.GetLocalVideos.getAllVideoInfo()
       .then((res) => {
         const resp = JSON.parse(res);
-        console.log("video", resp);
         setVideoList(resp);
       })
       .catch((err) => {
         console.log('err', err);
       });
   };
-
+  let upd = 0;
   const onPressBackup = () => {
     setModalVisible(true);
     const promises = imageList.map((p) => {
+      console.log(p);
       return new Promise((resolve, reject) => {
         uploadImage('upload/', p.node.image.uri)
           .then((r) => {
+            upd++;
+            setImageUploaded(upd);
             resolve(r);
           })
           .catch((err) => {
@@ -280,8 +284,8 @@ export default function AlbumExample({ navigation }) {
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text>aaa</Text>
-            <Progress.Bar progress={0.3} width={200} />
+            <Text>{imageUploaded} / {imageCount}</Text>
+            <Progress.Bar progress={imageUploaded / imageCount} width={200} />
           </View>
         </View>
       </Modal>
