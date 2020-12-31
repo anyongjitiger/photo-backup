@@ -1,5 +1,4 @@
 import axios from 'axios';
-import RNFetchBlob from 'rn-fetch-blob';
 import DeviceInfo from 'react-native-device-info';
 import GlobalVar from '../utils/global-var.js';
 const common_url = GlobalVar.common_url; //服务器地址
@@ -13,13 +12,14 @@ function uploadImage(url, params) {
   return new Promise(function (resolve, reject) {
     let formData = new FormData();
     let file = {
-      uri: params,
+      uri: params.uri,
       type: 'multipart/form-data',
-      name: params.substr(params.lastIndexOf('/') + 1),
+      name: params.filename,
     };
     let deviceName = DeviceInfo.getDeviceNameSync();
     formData.append('uploadFile', file);
     formData.append('device', deviceName);
+    formData.append('fileSize', params.fileSize.toString());
     axios
       .post(common_url + url, formData, {
         headers: {
@@ -38,45 +38,30 @@ function uploadImage(url, params) {
       .then(function () {
         // always executed
       });
+  });
+}
 
-    /* RNFetchBlob.fetch(
-      'POST',
-      common_url + url,
-      {
-        'Content-Type': 'multipart/form-data',
-        // Change BASE64 encoded data to a file path with prefix `RNFetchBlob-file://`.
-        // Or simply wrap the file path with RNFetchBlob.wrap()
-      },
-      RNFetchBlob.wrap(params),
-    )
-      .then((res) => {
-        console.log(res.text());
-      })
-      .catch((err) => {
-        console.log(err);
-        // error handling ..
-      }); */
-
-    /* axios
-      .get(common_url + 'show//1591239189020239000.jpg', {
+function uploadCheck(url, params) {
+  return new Promise(function (resolve, reject) {
+    let formData = new FormData();
+    formData.append('files', JSON.stringify(params));
+    axios
+      .post(common_url + url, formData, {
         headers: {
-          // 'Content-Type': 'multipart/form-data;',
-          // 'x-access-token': token,
+          'Content-Type': 'multipart/form-data',
+          // 'x-access-token': token
         },
       })
       .then(function (response) {
-        console.log(response);
-        resolve(response);
+        resolve(response.data);
       })
       .catch(function (error) {
-        // err
-        console.log(error);
+        // error
         reject(error);
       })
       .then(function () {
         // always executed
-      }); */
+      });
   });
 }
-
-export default uploadImage;
+export { uploadCheck, uploadImage };

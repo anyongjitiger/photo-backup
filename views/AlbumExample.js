@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import CameraRoll from "@react-native-community/cameraroll";
 import * as Progress from 'react-native-progress';
-import uploadImage from '../utils/upload';
+import { uploadImage, uploadCheck } from '../utils/upload';
 import { getData } from '../utils/global-storage';
 import GlobalVar from '../utils/global-var.js';
 const common_url = GlobalVar.common_url;
@@ -190,26 +190,66 @@ export default function AlbumExample({ navigation }) {
       });
   };
   let upd = 0;
+  const checkExists = async (list) => {
+    const _list = list.map((item) => {
+      return {
+        "FileName": item.node.image.filename,
+        "FileSize": item.node.image.fileSize.toString()
+      }
+    })
+    try {
+      const value = await uploadCheck('uploadCheck/', _list);
+      console.log(value);
+      if (value.State == 1) {
+        console.log(value.Data);
+        if (value.Msg === 'no data') {
+          return [];
+        } else {
+          return value.Data;
+        }
+      }
+    } catch (err) {
+      // saving error
+      console.log(err);
+    }
+  };
   const onPressBackup = () => {
     setModalVisible(true);
-    const promises = imageList.map((p) => {
-      console.log(p);
-      return new Promise((resolve, reject) => {
-        uploadImage('upload/', p.node.image.uri)
-          .then((r) => {
-            upd++;
-            setImageUploaded(upd);
-            resolve(r);
-          })
-          .catch((err) => {
-            console.log('err', err);
-            reject(err);
-          });
+    const imagesNotUploaded = [];
+    checkExists(imageList).then((list) => {
+      imageList.forEach(item => {
+        let img = item.node.image;
+        console.log("list", list);
+        JSON.parse(list).forEach(element => {
+          if (element.FileName == img.filename && element.FileSize == img.fileSize) {
+            imagesNotUploaded.push(item);
+          }
+        })
       });
-    });
-    Promise.all(promises).then(() => {
-      setModalVisible(false);
-      ToastExample.show('同步成功！', ToastExample.SHORT);
+      console.log(imagesNotUploaded);
+      const promises = imagesNotUploaded.map((p) => {
+        return new Promise((resolve, reject) => {
+          uploadImage('upload/', p.node.image)
+            .then((r) => {
+              upd++;
+              setImageUploaded(upd);
+              resolve(r);
+            })
+            .catch((err) => {
+              reject(err);
+            });
+        });
+      });
+      Promise.all(promises).then(() => {
+        setModalVisible(false);
+        ToastExample.show('同步成功！', ToastExample.SHORT);
+      }).catch(function (reason) {
+        if (reason.message === 'Network Error') {
+          console.log('网络连接失败！');
+          ToastExample.show('网络连接失败，请检查服务器连接！', ToastExample.LONG);
+        }
+        setModalVisible(false);
+      });
     });
   };
 
