@@ -78,8 +78,9 @@ export default function AlbumExample({ navigation }) {
 
   const requestReadPermissionIOS = () => {
     CameraRoll.getPhotos({
-      first: 10000,
-      assetType: 'Photos',
+      first: 40,
+      assetType: 'All',
+      include: ['filename', 'fileSize']
     }).done(
       (data) => {
         //成功的回调
@@ -91,7 +92,7 @@ export default function AlbumExample({ navigation }) {
             fliename: edges[i].node.image.fliename,
           });
         }
-        setPhotoList(photos);
+        setImageList(photos);
       },
       (error) => {
         //失败的回调
