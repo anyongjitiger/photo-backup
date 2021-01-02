@@ -16,6 +16,7 @@ import {
 import CameraRoll from "@react-native-community/cameraroll";
 import * as Progress from 'react-native-progress';
 import { uploadImage, uploadCheck } from '../utils/upload';
+import { showMessage, hideMessage } from "react-native-flash-message";
 
 export default function AlbumExample({ navigation }) {
   const [imageList, setImageList] = useState([]);
@@ -27,7 +28,7 @@ export default function AlbumExample({ navigation }) {
     if (Platform.OS === 'android') {
       requestReadPermission();
     } else {
-      requestReadPermissionIOS();
+      getLocalPhotos();
     }
   }, []);
 
@@ -47,7 +48,6 @@ export default function AlbumExample({ navigation }) {
       );
       if (_granted === PermissionsAndroid.RESULTS.GRANTED) {
         getLocalPhotos();
-        setGranted(true);
       } else {
         console.log('获取读写权限失败');
         Alert.alert(
@@ -77,48 +77,49 @@ export default function AlbumExample({ navigation }) {
   };
 
   const requestReadPermissionIOS = () => {
-    CameraRoll.getPhotos({
-      first: 40,
-      assetType: 'All',
-      include: ['filename', 'fileSize']
-    }).done(
-      (data) => {
-        //成功的回调
-        let edges = data.edges;
-        let photos = [];
-        for (let i in edges) {
-          photos.push({
-            path: edges[i].node.image.uri,
-            fliename: edges[i].node.image.fliename,
-          });
-        }
-        setImageList(photos);
-      },
-      (error) => {
-        //失败的回调
-        Alert.alert(
-          '权限申请',
-          '该功能需要获取系统存储空间权限，在设置-应用-原著漫画-权限中可开启储存空间权限',
-          [
-            {
-              text: '取消',
-              style: 'cancel',
-              onPress: () => {
-                goBack();
-              },
-            },
-            {
-              text: '确定',
-              onPress: () => {
-                goBack();
-              },
-            },
-          ],
-          { cancelable: false },
-        );
-        console.log(error.message);
-      },
-    );
+    // CameraRoll.getPhotos({
+    //   first: 40,
+    //   assetType: 'All',
+    //   include: ['filename', 'fileSize']
+    // }).done(
+    //   (data) => {
+    //     //成功的回调
+    //     let edges = data.edges;
+    //     let photos = [];
+    //     for (let i in edges) {
+    //       photos.push({
+    //         path: edges[i].node.image.uri,
+    //         fliename: edges[i].node.image.fliename,
+    //       });
+    //     }
+    //     setImageList(photos);
+    //   },
+    //   (error) => {
+    //     //失败的回调
+    //     Alert.alert(
+    //       '权限申请',
+    //       '该功能需要获取系统存储空间权限，在设置-应用-原著漫画-权限中可开启储存空间权限',
+    //       [
+    //         {
+    //           text: '取消',
+    //           style: 'cancel',
+    //           onPress: () => {
+    //             goBack();
+    //           },
+    //         },
+    //         {
+    //           text: '确定',
+    //           onPress: () => {
+    //             goBack();
+    //           },
+    //         },
+    //       ],
+    //       { cancelable: false },
+    //     );
+    //     console.log(error.message);
+    //   },
+    // );
+    getLocalPhotos();
   };
 
   const getLocalPhotos = () => {
@@ -127,13 +128,14 @@ export default function AlbumExample({ navigation }) {
       assetType: 'All',
       include: ['filename', 'fileSize']
     })
-      .then(r => {
-        setImageList(r.edges);
-        setImageCount(r.edges.length);
-      })
-      .catch((err) => {
-        //Error Loading Images
-      });
+    .then(r => {
+      const len = r.edges.length;
+      if(len > 0){
+        setGranted(true);
+      }
+      setImageList(r.edges);
+      setImageCount(r.edges.length);
+    });
   };
 
   const checkExists = async (list) => {
@@ -154,7 +156,7 @@ export default function AlbumExample({ navigation }) {
       }
     } catch (err) {
       // saving error
-      console.log(err);
+      console.log('checkExists error: ',err);
     }
   };
 
@@ -165,7 +167,15 @@ export default function AlbumExample({ navigation }) {
       if (list == null) {
         setImageUploaded(imageCount);
         setModalVisible(false);
-        ToastExample.show('已完成同步！', ToastExample.SHORT);
+        if (Platform.OS === 'android') {
+          ToastExample.show('已完成同步！', ToastExample.SHORT);
+        }else{
+          showMessage({
+            message: "已完成同步！",
+            type: "success",
+          });
+          console.log('已完成同步！');
+        }
       } else {
         imageList.forEach(item => {
           let img = item.node.image;
@@ -191,11 +201,26 @@ export default function AlbumExample({ navigation }) {
         });
         Promise.all(promises).then(() => {
           setModalVisible(false);
-          ToastExample.show('同步成功！', ToastExample.SHORT);
+          if (Platform.OS === 'android') {
+            ToastExample.show('同步成功！', ToastExample.SHORT);
+          }else{
+            showMessage({
+              message: "同步成功！",
+              type: "success",
+            });
+            console.log('同步成功！');
+          }
         }).catch(function (reason) {
           if (reason.message === 'Network Error') {
             console.log('网络连接失败！');
-            ToastExample.show('网络连接失败，请检查服务器连接！', ToastExample.LONG);
+            if (Platform.OS === 'android') {
+              ToastExample.show('网络连接失败，请检查服务器连接！', ToastExample.LONG);
+            }else{
+              showMessage({
+                message: "网络连接失败！",
+                type: "warning",
+              });
+            }
           }
           setModalVisible(false);
         });
