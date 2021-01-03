@@ -1,6 +1,5 @@
 // eslint-disable-next-line prettier/prettier
 import React, { useState, useEffect } from 'react';
-import ToastExample from '../ToastExample';
 import {
   PermissionsAndroid,
   StyleSheet,
@@ -16,7 +15,7 @@ import {
 import CameraRoll from "@react-native-community/cameraroll";
 import * as Progress from 'react-native-progress';
 import { uploadImage, uploadCheck } from '../utils/upload';
-import { showMessage, hideMessage } from "react-native-flash-message";
+import { showMessage } from "react-native-flash-message";
 
 export default function AlbumExample({ navigation }) {
   const [imageList, setImageList] = useState([]);
@@ -76,55 +75,9 @@ export default function AlbumExample({ navigation }) {
     }
   };
 
-  const requestReadPermissionIOS = () => {
-    // CameraRoll.getPhotos({
-    //   first: 40,
-    //   assetType: 'All',
-    //   include: ['filename', 'fileSize']
-    // }).done(
-    //   (data) => {
-    //     //成功的回调
-    //     let edges = data.edges;
-    //     let photos = [];
-    //     for (let i in edges) {
-    //       photos.push({
-    //         path: edges[i].node.image.uri,
-    //         fliename: edges[i].node.image.fliename,
-    //       });
-    //     }
-    //     setImageList(photos);
-    //   },
-    //   (error) => {
-    //     //失败的回调
-    //     Alert.alert(
-    //       '权限申请',
-    //       '该功能需要获取系统存储空间权限，在设置-应用-原著漫画-权限中可开启储存空间权限',
-    //       [
-    //         {
-    //           text: '取消',
-    //           style: 'cancel',
-    //           onPress: () => {
-    //             goBack();
-    //           },
-    //         },
-    //         {
-    //           text: '确定',
-    //           onPress: () => {
-    //             goBack();
-    //           },
-    //         },
-    //       ],
-    //       { cancelable: false },
-    //     );
-    //     console.log(error.message);
-    //   },
-    // );
-    getLocalPhotos();
-  };
-
   const getLocalPhotos = () => {
     CameraRoll.getPhotos({
-      first: 40,
+      first: 10000,
       assetType: 'All',
       include: ['filename', 'fileSize']
     })
@@ -155,8 +108,8 @@ export default function AlbumExample({ navigation }) {
         }
       }
     } catch (err) {
-      // saving error
       console.log('checkExists error: ',err);
+      throw new Error('checkExists 出错了');
     }
   };
 
@@ -167,15 +120,10 @@ export default function AlbumExample({ navigation }) {
       if (list == null) {
         setImageUploaded(imageCount);
         setModalVisible(false);
-        if (Platform.OS === 'android') {
-          ToastExample.show('已完成同步！', ToastExample.SHORT);
-        }else{
-          showMessage({
-            message: "已完成同步！",
-            type: "success",
-          });
-          console.log('已完成同步！');
-        }
+        showMessage({
+          message: "已完成同步！",
+          type: "success",
+        });
       } else {
         imageList.forEach(item => {
           let img = item.node.image;
@@ -201,30 +149,23 @@ export default function AlbumExample({ navigation }) {
         });
         Promise.all(promises).then(() => {
           setModalVisible(false);
-          if (Platform.OS === 'android') {
-            ToastExample.show('同步成功！', ToastExample.SHORT);
-          }else{
-            showMessage({
-              message: "同步成功！",
-              type: "success",
-            });
-            console.log('同步成功！');
-          }
+          showMessage({
+            message: "同步成功！",
+            type: "success",
+          });
         }).catch(function (reason) {
           if (reason.message === 'Network Error') {
-            console.log('网络连接失败！');
-            if (Platform.OS === 'android') {
-              ToastExample.show('网络连接失败，请检查服务器连接！', ToastExample.LONG);
-            }else{
-              showMessage({
-                message: "网络连接失败！",
-                type: "warning",
-              });
-            }
+            showMessage({
+              message: "网络连接失败，请检查服务器连接！",
+              type: "warning",
+            });
           }
           setModalVisible(false);
         });
       }
+    }).catch(e => {
+      console.log("捕获到错误：",e);
+      setModalVisible(false);
     });
   };
 
