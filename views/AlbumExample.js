@@ -21,7 +21,9 @@ export default function AlbumExample({ navigation }) {
   const [imageList, setImageList] = useState([]);
   const [imageCount, setImageCount] = useState(0);
   const [imageUploaded, setImageUploaded] = useState(0);
+  const [lastImageEndCursor, setLastImageEndCursor] = useState("");
   const [granted, setGranted] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -76,18 +78,33 @@ export default function AlbumExample({ navigation }) {
   };
 
   const getLocalPhotos = () => {
-    CameraRoll.getPhotos({
-      first: 10000,
-      assetType: 'All',
+    console.log('lastImageEndCursor:', lastImageEndCursor);
+    const config = {
+      first: 5,
+      assetType: 'Photos',
       include: ['filename', 'fileSize']
-    })
+    };
+    if(lastImageEndCursor !== ""){
+      config.after = lastImageEndCursor;
+    }
+    CameraRoll.getPhotos(config)
     .then(r => {
       const len = r.edges.length;
+      console.log(r.page_info, r.edges);
       if(len > 0){
         setGranted(true);
       }
+      if(r.page_info.has_next_page){
+        setLastImageEndCursor(r.page_info.end_cursor);
+        setHasNextPage(true);
+      }
       setImageList(r.edges);
-      setImageCount(r.edges.length);
+      setImageCount(r.edges.length + imageCount);
+      console.log("aaaaaaa");
+      //如果是第二页之后，自动触发上传图片
+      if(modalVisible){
+        onPressBackup();
+      }
     });
   };
 
@@ -139,7 +156,7 @@ export default function AlbumExample({ navigation }) {
             uploadImage('upload/', p.node.image)
               .then((r) => {
                 upd++;
-                setImageUploaded(upd);
+                setImageUploaded(upd + imageUploaded);
                 resolve(r);
               })
               .catch((err) => {
@@ -148,11 +165,15 @@ export default function AlbumExample({ navigation }) {
           });
         });
         Promise.all(promises).then(() => {
-          setModalVisible(false);
-          showMessage({
-            message: "同步成功！",
-            type: "success",
-          });
+          if(hasNextPage){
+            getLocalPhotos();
+          }else{
+            setModalVisible(false);
+            showMessage({
+              message: "同步成功！",
+              type: "success",
+            });
+          }
         }).catch(function (reason) {
           if (reason.message === 'Network Error') {
             showMessage({
