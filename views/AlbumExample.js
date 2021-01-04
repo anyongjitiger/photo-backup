@@ -18,13 +18,20 @@ import { uploadImage, uploadCheck } from '../utils/upload';
 import { showMessage } from "react-native-flash-message";
 
 export default function AlbumExample({ navigation }) {
-  const [imageList, setImageList] = useState([]);
+  const [imageShowList, setImageShowList] = useState([]);
+  let imageList = [];
+  let allImageList = [];
+  let allImageUploaded = 0;
+  const imagesPerPage = 12;
   const [imageCount, setImageCount] = useState(0);
   const [imageUploaded, setImageUploaded] = useState(0);
-  const [lastImageEndCursor, setLastImageEndCursor] = useState("");
+  // const [lastImageEndCursor, setLastImageEndCursor] = useState("");
+  let lastImageEndCursor = "";
   const [granted, setGranted] = useState(false);
-  const [hasNextPage, setHasNextPage] = useState(false);
+  // const [hasNextPage, setHasNextPage] = useState(false);
+  let hasNextPage = true;
   const [modalVisible, setModalVisible] = useState(false);
+  let uploading = false;
   useEffect(() => {
     if (Platform.OS === 'android') {
       requestReadPermission();
@@ -78,9 +85,8 @@ export default function AlbumExample({ navigation }) {
   };
 
   const getLocalPhotos = () => {
-    console.log('lastImageEndCursor:', lastImageEndCursor);
     const config = {
-      first: 5,
+      first: imagesPerPage,
       assetType: 'Photos',
       include: ['filename', 'fileSize']
     };
@@ -90,21 +96,33 @@ export default function AlbumExample({ navigation }) {
     CameraRoll.getPhotos(config)
     .then(r => {
       const len = r.edges.length;
-      console.log(r.page_info, r.edges);
       if(len > 0){
         setGranted(true);
       }
       if(r.page_info.has_next_page){
-        setLastImageEndCursor(r.page_info.end_cursor);
-        setHasNextPage(true);
+        // setLastImageEndCursor(r.page_info.end_cursor);
+        lastImageEndCursor = r.page_info.end_cursor;
+        // setHasNextPage(true);
+        hasNextPage = true;
+      } else {
+        hasNextPage = false;
       }
-      setImageList(r.edges);
-      setImageCount(r.edges.length + imageCount);
-      console.log("aaaaaaa");
+      // setImageList(r.edges);
+      imageList = r.edges;
+      allImageList = allImageList.concat(r.edges);
+      setImageCount(ic => ic + r.edges.length);
+      setImageShowList(allImageList);
+
       //如果是第二页之后，自动触发上传图片
-      if(modalVisible){
-        onPressBackup();
-      }
+
+      // setTimeout(() => {
+      if (uploading) {
+          onPressBackup();
+        }
+      // }, 50);
+
+    }).catch(err => {
+      console.log("getLocalPhotos error:", err);
     });
   };
 
@@ -132,16 +150,19 @@ export default function AlbumExample({ navigation }) {
 
   const onPressBackup = () => {
     setModalVisible(true);
+    uploading = true;
     const imagesNotUploaded = [];
     checkExists(imageList).then((list) => {
-      if (list == null) {
+      if (!hasNextPage) {
         setImageUploaded(imageCount);
+        setImageCount(0);
         setModalVisible(false);
+        uploading = false;
         showMessage({
           message: "已完成同步！",
           type: "success",
         });
-      } else {
+      } else if (list != null) {
         imageList.forEach(item => {
           let img = item.node.image;
           JSON.parse(list).forEach(element => {
@@ -156,7 +177,8 @@ export default function AlbumExample({ navigation }) {
             uploadImage('upload/', p.node.image)
               .then((r) => {
                 upd++;
-                setImageUploaded(upd + imageUploaded);
+                allImageUploaded = allImageUploaded + upd;
+                setImageUploaded(allImageUploaded);
                 resolve(r);
               })
               .catch((err) => {
@@ -165,10 +187,12 @@ export default function AlbumExample({ navigation }) {
           });
         });
         Promise.all(promises).then(() => {
+          console.log("complete a uploading!", hasNextPage);
           if(hasNextPage){
             getLocalPhotos();
           }else{
             setModalVisible(false);
+            uploading = false;
             showMessage({
               message: "同步成功！",
               type: "success",
@@ -182,15 +206,21 @@ export default function AlbumExample({ navigation }) {
             });
           }
           setModalVisible(false);
+          uploading = false;
         });
+      } else {
+        allImageUploaded = allImageUploaded + imagesPerPage;
+        setImageUploaded(allImageUploaded);
+        getLocalPhotos();
       }
     }).catch(e => {
       console.log("捕获到错误：",e);
       setModalVisible(false);
+      uploading = false;
     });
   };
 
-  const Images = imageList.map((p, index) => {
+  const Images = imageShowList.map((p, index) => {
     return (
       <View style={styles.photoView} key={index}>
         <Image style={styles.photo} source={{ uri: p.node.image.uri }} />
