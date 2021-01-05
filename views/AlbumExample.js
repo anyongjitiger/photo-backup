@@ -1,5 +1,5 @@
 // eslint-disable-next-line prettier/prettier
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   PermissionsAndroid,
   StyleSheet,
@@ -19,26 +19,33 @@ import { showMessage } from "react-native-flash-message";
 
 export default function AlbumExample({ navigation }) {
   const [imageShowList, setImageShowList] = useState([]);
-  let imageList = [];
-  let allImageList = [];
-  let allImageUploaded = 0;
-  const imagesPerPage = 12;
-  const [imageCount, setImageCount] = useState(0);
+  const [imageTotal, setImageTotal] = useState(0);
   const [imageUploaded, setImageUploaded] = useState(0);
-  // const [lastImageEndCursor, setLastImageEndCursor] = useState("");
-  let lastImageEndCursor = "";
   const [granted, setGranted] = useState(false);
-  // const [hasNextPage, setHasNextPage] = useState(false);
-  let hasNextPage = true;
   const [modalVisible, setModalVisible] = useState(false);
-  let uploading = false;
+  const [lastImageEndCursor, setLastImageEndCursor] = useState("");
+  const lastImageEndCursorRef = useRef(lastImageEndCursor);
+  const [imageList, setImageList] = useState([]);
+  const imageListRef = useRef(imageList);
+  const [hasNextPage, setHasNextPage] = useState(true);
+  const hasNextPageRef = useRef(hasNextPage);
+  const [uploading, setUploading] = useState(false);
+  const uploadingRef = useRef(uploading);
+
   useEffect(() => {
     if (Platform.OS === 'android') {
       requestReadPermission();
     } else {
-      getLocalPhotos();
+      getAlbums();
     }
   }, []);
+
+  useEffect(() => {
+    lastImageEndCursorRef.current = lastImageEndCursor;
+    imageListRef.current = imageList;
+    hasNextPageRef.current = hasNextPage;
+    uploadingRef.current = uploading;
+  });
 
   const goBack = () => {
     navigation.goBack();
@@ -46,7 +53,6 @@ export default function AlbumExample({ navigation }) {
 
   const requestReadPermission = async () => {
     try {
-      //返回string类型
       const _granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
         {
@@ -55,7 +61,7 @@ export default function AlbumExample({ navigation }) {
         },
       );
       if (_granted === PermissionsAndroid.RESULTS.GRANTED) {
-        getLocalPhotos();
+        getAlbums();
       } else {
         console.log('获取读写权限失败');
         Alert.alert(
@@ -84,14 +90,26 @@ export default function AlbumExample({ navigation }) {
     }
   };
 
+  const getAlbums = () => {
+    CameraRoll.getAlbums({ 'assetType': 'Photos' }).then(r => {
+      const imgCount = r.reduce((pre, cur) => {
+        return (pre + cur.count);
+      }, 0);
+      setImageTotal(imgCount);
+      console.log(2211222);
+      getLocalPhotos();
+    });
+  };
+
   const getLocalPhotos = () => {
     const config = {
-      first: imagesPerPage,
+      first: 12,
       assetType: 'Photos',
+      // groupName: 'sexy',
       include: ['filename', 'fileSize']
     };
-    if(lastImageEndCursor !== ""){
-      config.after = lastImageEndCursor;
+    if (lastImageEndCursorRef.current !== "") {
+      config.after = lastImageEndCursorRef.current;
     }
     CameraRoll.getPhotos(config)
     .then(r => {
@@ -100,26 +118,18 @@ export default function AlbumExample({ navigation }) {
         setGranted(true);
       }
       if(r.page_info.has_next_page){
-        // setLastImageEndCursor(r.page_info.end_cursor);
-        lastImageEndCursor = r.page_info.end_cursor;
-        // setHasNextPage(true);
-        hasNextPage = true;
+        setLastImageEndCursor(r.page_info.end_cursor);
+        setHasNextPage(true);
       } else {
-        hasNextPage = false;
+        setHasNextPage(false);
       }
-      // setImageList(r.edges);
-      imageList = r.edges;
-      allImageList = allImageList.concat(r.edges);
-      setImageCount(ic => ic + r.edges.length);
-      setImageShowList(allImageList);
+      setImageList(r.edges);
+      setImageShowList(l => l.concat(imageListRef.current));
 
       //如果是第二页之后，自动触发上传图片
-
-      // setTimeout(() => {
-      if (uploading) {
-          onPressBackup();
-        }
-      // }, 50);
+      if (uploadingRef.current) {
+        onPressBackup();
+      }
 
     }).catch(err => {
       console.log("getLocalPhotos error:", err);
@@ -148,75 +158,111 @@ export default function AlbumExample({ navigation }) {
     }
   };
 
+  const sync = () => {
+    setLastImageEndCursor("");
+    setImageList([]);
+    getAlbums();
+  }
+
   const onPressBackup = () => {
     setModalVisible(true);
-    uploading = true;
+    setUploading(true);
     const imagesNotUploaded = [];
-    checkExists(imageList).then((list) => {
-      if (!hasNextPage) {
-        setImageUploaded(imageCount);
-        setImageCount(0);
-        setModalVisible(false);
-        uploading = false;
-        showMessage({
-          message: "已完成同步！",
-          type: "success",
-        });
-      } else if (list != null) {
-        imageList.forEach(item => {
-          let img = item.node.image;
-          JSON.parse(list).forEach(element => {
-            if (element.FileName == img.filename && element.FileSize == img.fileSize) {
-              imagesNotUploaded.push(item);
-            }
-          })
-        });
-        let upd = 0;
-        const promises = imagesNotUploaded.map((p) => {
-          return new Promise((resolve, reject) => {
-            uploadImage('upload/', p.node.image)
-              .then((r) => {
-                upd++;
-                allImageUploaded = allImageUploaded + upd;
-                setImageUploaded(allImageUploaded);
-                resolve(r);
-              })
-              .catch((err) => {
-                reject(err);
-              });
+    checkExists(imageListRef.current).then((list) => {
+      if (!hasNextPageRef.current) {
+        if (list != null) {
+          imageListRef.current.forEach(item => {
+            let img = item.node.image;
+            JSON.parse(list).forEach(element => {
+              if (element.FileName == img.filename && element.FileSize == img.fileSize) {
+                imagesNotUploaded.push(item);
+              }
+            })
           });
-        });
-        Promise.all(promises).then(() => {
-          console.log("complete a uploading!", hasNextPage);
-          if(hasNextPage){
-            getLocalPhotos();
-          }else{
+          const promises = imagesNotUploaded.map((p) => {
+            return new Promise((resolve, reject) => {
+              uploadImage('upload/', p.node.image)
+                .then((r) => {
+                  setImageUploaded(iu => iu + 1);
+                  resolve(r);
+                })
+                .catch((err) => {
+                  reject(err);
+                });
+            });
+          });
+          Promise.all(promises).then(() => {
+            setImageUploaded(0);
             setModalVisible(false);
-            uploading = false;
+            setUploading(false);
             showMessage({
-              message: "同步成功！",
+              message: "同步完成！",
               type: "success",
             });
-          }
-        }).catch(function (reason) {
-          if (reason.message === 'Network Error') {
-            showMessage({
-              message: "网络连接失败，请检查服务器连接！",
-              type: "warning",
-            });
-          }
+          }).catch(function (reason) {
+            if (reason.message === 'Network Error') {
+              showMessage({
+                message: "网络连接失败，请检查服务器连接！",
+                type: "warning",
+              });
+            }
+            setModalVisible(false);
+            setUploading(false);
+          });
+        } else {
+          setImageUploaded(0);
           setModalVisible(false);
-          uploading = false;
-        });
+          setUploading(false);
+          showMessage({
+            message: "已完成同步！",
+            type: "success",
+          });
+        }
       } else {
-        allImageUploaded = allImageUploaded + imagesPerPage;
-        setImageUploaded(allImageUploaded);
-        getLocalPhotos();
+        if (list != null) {
+          imageListRef.current.forEach(item => {
+            let img = item.node.image;
+            JSON.parse(list).forEach(element => {
+              if (element.FileName == img.filename && element.FileSize == img.fileSize) {
+                imagesNotUploaded.push(item);
+              }
+            })
+          });
+          const promises = imagesNotUploaded.map((p) => {
+            return new Promise((resolve, reject) => {
+              uploadImage('upload/', p.node.image)
+                .then((r) => {
+                  setImageUploaded(iu => iu + 1);
+                  resolve(r);
+                })
+                .catch((err) => {
+                  reject(err);
+                });
+            });
+          });
+          Promise.all(promises).then(() => {
+            getLocalPhotos();
+          }).catch(function (reason) {
+            if (reason.message === 'Network Error') {
+              showMessage({
+                message: "网络连接失败，请检查服务器连接！",
+                type: "warning",
+              });
+            }
+            setModalVisible(false);
+            setUploading(false);
+          });
+        } else {
+          if (imageListRef.current.length > 0) {
+            setImageUploaded(iu => iu + imageListRef.current.length);
+          }
+          getLocalPhotos();
+        }
       }
     }).catch(e => {
       console.log("捕获到错误：",e);
       setModalVisible(false);
-      uploading = false;
+      setUploading(false);
     });
   };
 
@@ -227,6 +273,7 @@ export default function AlbumExample({ navigation }) {
       </View>
     );
   });
+
   return (
     <View>
       <View style={{ height: 80 }}>
@@ -237,7 +284,7 @@ export default function AlbumExample({ navigation }) {
           disabled={!granted}
         />
         <Button
-          onPress={getLocalPhotos}
+          onPress={sync}
           title="同步相册"
         />
       </View>
@@ -255,8 +302,8 @@ export default function AlbumExample({ navigation }) {
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text>{imageUploaded} / {imageCount}</Text>
-            <Progress.Bar progress={imageUploaded / imageCount} width={200} />
+            <Text>{imageUploaded} / {imageTotal}</Text>
+            <Progress.Bar progress={imageUploaded / imageTotal} width={200} />
           </View>
         </View>
       </Modal>
@@ -278,7 +325,6 @@ const styles = StyleSheet.create({
   photoView: {
     marginTop: 10,
     width: '33%',
-    // height: '33%',
   },
   photo: {
     width: '100%',
