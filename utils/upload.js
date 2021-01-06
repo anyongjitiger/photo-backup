@@ -19,6 +19,7 @@ function uploadImage(url, params) {
     let deviceName = DeviceInfo.getDeviceNameSync();
     formData.append('uploadFile', file);
     formData.append('device', deviceName);
+    formData.append('fileName', params.filename);
     formData.append('fileSize', params.fileSize.toString());
     axios
       .post(common_url + url, formData, {

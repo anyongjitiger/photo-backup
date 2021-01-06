@@ -91,12 +91,11 @@ export default function AlbumExample({ navigation }) {
   };
 
   const getAlbums = () => {
-    CameraRoll.getAlbums({ 'assetType': 'Photos' }).then(r => {
+    CameraRoll.getAlbums({ 'assetType': 'All' }).then(r => {
       const imgCount = r.reduce((pre, cur) => {
         return (pre + cur.count);
       }, 0);
       setImageTotal(imgCount);
-      console.log(2211222);
       getLocalPhotos();
     });
   };
@@ -104,7 +103,7 @@ export default function AlbumExample({ navigation }) {
   const getLocalPhotos = () => {
     const config = {
       first: 12,
-      assetType: 'Photos',
+      assetType: 'All',
       // groupName: 'sexy',
       include: ['filename', 'fileSize']
     };
@@ -161,6 +160,7 @@ export default function AlbumExample({ navigation }) {
   const sync = () => {
     setLastImageEndCursor("");
     setImageList([]);
+    setImageShowList([]);
     getAlbums();
   }
 
@@ -169,29 +169,29 @@ export default function AlbumExample({ navigation }) {
     setUploading(true);
     const imagesNotUploaded = [];
     checkExists(imageListRef.current).then((list) => {
-      if (!hasNextPageRef.current) {
-        if (list != null) {
-          imageListRef.current.forEach(item => {
-            let img = item.node.image;
-            JSON.parse(list).forEach(element => {
-              if (element.FileName == img.filename && element.FileSize == img.fileSize) {
-                imagesNotUploaded.push(item);
-              }
-            })
+      if (list != null) {
+        imageListRef.current.forEach(item => {
+          let img = item.node.image;
+          JSON.parse(list).forEach(element => {
+            if (element.FileName == img.filename && element.FileSize == img.fileSize) {
+              imagesNotUploaded.push(item);
+            }
+          })
+        });
+        const promises = imagesNotUploaded.map((p) => {
+          return new Promise((resolve, reject) => {
+            uploadImage('upload/', p.node.image)
+              .then((r) => {
+                setImageUploaded(iu => iu + 1);
+                resolve(r);
+              })
+              .catch((err) => {
+                reject(err);
+              });
           });
-          const promises = imagesNotUploaded.map((p) => {
-            return new Promise((resolve, reject) => {
-              uploadImage('upload/', p.node.image)
-                .then((r) => {
-                  setImageUploaded(iu => iu + 1);
-                  resolve(r);
-                })
-                .catch((err) => {
-                  reject(err);
-                });
-            });
-          });
-          Promise.all(promises).then(() => {
+        });
+        Promise.all(promises).then(() => {
+          if (!hasNextPageRef.current) {
             setImageUploaded(0);
             setModalVisible(false);
             setUploading(false);
@@ -199,58 +199,27 @@ export default function AlbumExample({ navigation }) {
               message: "同步完成！",
               type: "success",
             });
-          }).catch(function (reason) {
-            if (reason.message === 'Network Error') {
-              showMessage({
-                message: "网络连接失败，请检查服务器连接！",
-                type: "warning",
-              });
-            }
-            setModalVisible(false);
-            setUploading(false);
-          });
-        } else {
+          } else {
+            getLocalPhotos();
+          }
+        }).catch(function (reason) {
+          if (reason.message === 'Network Error') {
+            showMessage({
+              message: "网络连接失败，请检查服务器连接！",
+              type: "warning",
+            });
+          }
+          setModalVisible(false);
+          setUploading(false);
+        });
+      } else {
+        if (!hasNextPageRef.current) {
           setImageUploaded(0);
           setModalVisible(false);
           setUploading(false);
           showMessage({
             message: "已完成同步！",
             type: "success",
-          });
-        }
-      } else {
-        if (list != null) {
-          imageListRef.current.forEach(item => {
-            let img = item.node.image;
-            JSON.parse(list).forEach(element => {
-              if (element.FileName == img.filename && element.FileSize == img.fileSize) {
-                imagesNotUploaded.push(item);
-              }
-            })
-          });
-          const promises = imagesNotUploaded.map((p) => {
-            return new Promise((resolve, reject) => {
-              uploadImage('upload/', p.node.image)
-                .then((r) => {
-                  setImageUploaded(iu => iu + 1);
-                  resolve(r);
-                })
-                .catch((err) => {
-                  reject(err);
-                });
-            });
-          });
-          Promise.all(promises).then(() => {
-            getLocalPhotos();
-          }).catch(function (reason) {
-            if (reason.message === 'Network Error') {
-              showMessage({
-                message: "网络连接失败，请检查服务器连接！",
-                type: "warning",
-              });
-            }
-            setModalVisible(false);
-            setUploading(false);
           });
         } else {
           if (imageListRef.current.length > 0) {
