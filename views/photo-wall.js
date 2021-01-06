@@ -6,13 +6,13 @@ export default function PhotoWall({ navigation }) {
   return (
     <>
       <SafeAreaView>
-        <ScrollView
+        <View
           contentInsetAdjustmentBehavior="automatic"
           style={styles.scrollView}>
           <View style={styles.body}>
             <AlbumExample navigation={navigation} />
           </View>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     </>
   );
