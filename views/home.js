@@ -52,7 +52,7 @@ export default function HomeScreen({ navigation }) {
             <Image
                 style={styles.tinyLogo}
                 width={'100%'}
-                source={require('../imgs/601.jpg')}
+                source={require('../imgs/558.jpg')}
             />
         </View>
     );

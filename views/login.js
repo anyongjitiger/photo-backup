@@ -59,9 +59,9 @@ export default function Login({ navigation }) {
         style={{ height: 40 }}
         value={url}
         onChange={changeUrl}
-        placeholder="URL"
+        placeholder="服务器地址"
       />
-      <Button onPress={onPress} title="Login" color="#841584" />
+      <Button onPress={onPress} title="登录" color="#841584" />
     </View>
   );
 }
