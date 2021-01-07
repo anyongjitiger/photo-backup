@@ -1,5 +1,5 @@
 // eslint-disable-next-line prettier/prettier
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useReducer } from 'react';
 import {
   PermissionsAndroid,
   StyleSheet,
@@ -18,19 +18,77 @@ import { uploadImage, uploadCheck } from '../utils/upload';
 import { showMessage } from "react-native-flash-message";
 
 export default function AlbumExample({ navigation }) {
+  const [imageList, setImageList] = useState([]);
   const [imageShowList, setImageShowList] = useState([]);
+  const [lastImageEndCursor, setLastImageEndCursor] = useState("");
+  const [hasNextPage, setHasNextPage] = useState(true);
   const [imageTotal, setImageTotal] = useState(0);
   const [imageUploaded, setImageUploaded] = useState(0);
   const [granted, setGranted] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [lastImageEndCursor, setLastImageEndCursor] = useState("");
-  const lastImageEndCursorRef = useRef(lastImageEndCursor);
-  const [imageList, setImageList] = useState([]);
-  const imageListRef = useRef(imageList);
-  const [hasNextPage, setHasNextPage] = useState(true);
-  const hasNextPageRef = useRef(hasNextPage);
   const [uploading, setUploading] = useState(false);
-  const uploadingRef = useRef(uploading);
+
+  const initialState = { 
+    uploading: false, 
+    modalVisible: false, 
+    hasNextPage: true,
+    lastImageEndCursor: "",
+    imageList: [],
+    imageShowList: [],
+    imageUploaded: 0
+  };
+  const imagesReducer = (state, action) => {
+    switch (action.type) {
+      case "FETCH_IMG": {
+        return {
+          ...state,
+          imageList: action.payload.imageList,
+          imageShowList: state.imageShowList.concat(action.payload.imageList),
+          hasNextPage: action.payload.hasNextPage,
+          lastImageEndCursor: action.payload.lastImageEndCursor
+        };
+      }
+      case "UPLOADING": {
+        return {
+          ...state,
+          uploading: true,
+          modalVisible: true
+        }
+      }
+      case "UPLOADED": {
+        return {
+          ...state,
+          imageUploaded: state.imageUploaded + action.payload.uploaded
+        }
+      }
+      case "UPLOAD_COMPLETE": {
+        return {
+          ...state,
+          uploading: false,
+          modalVisible: false,
+          imageUploaded: 0
+        }
+      }
+      case "ERROR": {
+        return {
+          ...state,
+          uploading: false,
+          modalVisible: false
+        }
+      }
+      case "RESET": {
+        return initialState;
+      }
+      default:
+        throw new Error( `Not supported action ${action.type}` );
+    }
+  }
+  const [state, dispatch] = useReducer(imagesReducer, initialState);
+
+  const uploadingRef = useRef(state.uploading);
+  const lastImageEndCursorRef = useRef(state.lastImageEndCursor);
+  const hasNextPageRef = useRef(state.hasNextPage);
+  const imageListRef = useRef(state.imageList);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -41,10 +99,10 @@ export default function AlbumExample({ navigation }) {
   }, []);
 
   useEffect(() => {
-    lastImageEndCursorRef.current = lastImageEndCursor;
-    imageListRef.current = imageList;
-    hasNextPageRef.current = hasNextPage;
-    uploadingRef.current = uploading;
+    lastImageEndCursorRef.current = state.lastImageEndCursor;
+    imageListRef.current = state.imageList;
+    hasNextPageRef.current = state.hasNextPage;
+    uploadingRef.current = state.uploading;
   });
 
   const goBack = () => {
@@ -117,13 +175,29 @@ export default function AlbumExample({ navigation }) {
         setGranted(true);
       }
       if(r.page_info.has_next_page){
-        setLastImageEndCursor(r.page_info.end_cursor);
-        setHasNextPage(true);
+        // setLastImageEndCursor(r.page_info.end_cursor);
+        // setHasNextPage(true);
+        dispatch({
+          type: 'FETCH_IMG',
+          payload: { 
+            imageList: r.edges,
+            hasNextPage: true,
+            lastImageEndCursor: r.page_info.end_cursor
+          }
+        })
       } else {
-        setHasNextPage(false);
+        // setHasNextPage(false);
+        dispatch({
+          type: 'FETCH_IMG',
+          payload: { 
+            imageList: r.edges,
+            hasNextPage: false,
+            lastImageEndCursor: r.page_info.end_cursor //这里可能有问题
+          }
+        })
       }
-      setImageList(r.edges);
-      setImageShowList(l => l.concat(imageListRef.current));
+      // setImageList(r.edges);
+      // setImageShowList(l => l.concat(imageListRef.current));
 
       //如果是第二页之后，自动触发上传图片
       if (uploadingRef.current) {
@@ -158,15 +232,18 @@ export default function AlbumExample({ navigation }) {
   };
 
   const sync = () => {
-    setLastImageEndCursor("");
-    setImageList([]);
-    setImageShowList([]);
+    // setLastImageEndCursor("");
+    // setImageList([]);
+    // setImageShowList([]);
+    dispatch({type: 'RESET'});
     getAlbums();
   }
 
   const onPressBackup = () => {
-    setModalVisible(true);
-    setUploading(true);
+    // setModalVisible(true);
+    // setUploading(true);
+    
+    dispatch({type: 'UPLOADING'});
     const imagesNotUploaded = [];
     checkExists(imageListRef.current).then((list) => {
       if (list != null) {
@@ -182,7 +259,11 @@ export default function AlbumExample({ navigation }) {
           return new Promise((resolve, reject) => {
             uploadImage('upload/', p.node.image)
               .then((r) => {
-                setImageUploaded(iu => iu + 1);
+                // setImageUploaded(iu => iu + 1);
+                dispatch({
+                  type: 'UPLOADED', 
+                  payload:{'uploaded': 1}
+                });
                 resolve(r);
               })
               .catch((err) => {
@@ -192,9 +273,10 @@ export default function AlbumExample({ navigation }) {
         });
         Promise.all(promises).then(() => {
           if (!hasNextPageRef.current) {
-            setImageUploaded(0);
-            setModalVisible(false);
-            setUploading(false);
+            // setImageUploaded(0);
+            // setModalVisible(false);
+            // setUploading(false);
+            dispatch({type: 'UPLOAD_COMPLETE'});
             showMessage({
               message: "同步完成！",
               type: "success",
@@ -209,33 +291,40 @@ export default function AlbumExample({ navigation }) {
               type: "warning",
             });
           }
-          setModalVisible(false);
-          setUploading(false);
+          // setModalVisible(false);
+          // setUploading(false);
+          dispatch({type: 'ERROR'});
         });
       } else {
         if (!hasNextPageRef.current) {
-          setImageUploaded(0);
-          setModalVisible(false);
-          setUploading(false);
+          // setImageUploaded(0);
+          // setModalVisible(false);
+          // setUploading(false);
+          dispatch({type: 'UPLOAD_COMPLETE'});
           showMessage({
             message: "已完成同步！",
             type: "success",
           });
         } else {
           if (imageListRef.current.length > 0) {
-            setImageUploaded(iu => iu + imageListRef.current.length);
+            dispatch({
+              type: 'UPLOADED', 
+              payload:{'uploaded': imageListRef.current.length}
+            });
+            // setImageUploaded(iu => iu + imageListRef.current.length);
           }
           getLocalPhotos();
         }
       }
     }).catch(e => {
       console.log("捕获到错误：",e);
-      setModalVisible(false);
-      setUploading(false);
+      // setModalVisible(false);
+      // setUploading(false);
+      dispatch({type: 'ERROR'});
     });
   };
 
-  const Images = imageShowList.map((p, index) => {
+  const Images = state.imageShowList.map((p, index) => {
     return (
       <View style={styles.photoView} key={index}>
         <Image style={styles.photo} source={{ uri: p.node.image.uri }} />
@@ -264,15 +353,15 @@ export default function AlbumExample({ navigation }) {
       <Modal
         animationType="slide"
         transparent={true}
-        visible={modalVisible}
+        visible={state.modalVisible}
         onRequestClose={() => {
           Alert.alert("Modal has been closed.");
         }}
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text>{imageUploaded} / {imageTotal}</Text>
-            <Progress.Bar progress={imageUploaded / imageTotal} width={200} />
+            <Text>{state.imageUploaded} / {imageTotal}</Text>
+            <Progress.Bar progress={state.imageUploaded / imageTotal} width={200} />
           </View>
         </View>
       </Modal>
