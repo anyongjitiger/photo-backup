@@ -12,25 +12,18 @@ import {
   Modal,
   Text,
 } from 'react-native';
+import useMountedState from 'react-use/lib/useMountedState';
 import CameraRoll from "@react-native-community/cameraroll";
 import * as Progress from 'react-native-progress';
 import { uploadImage, uploadCheck } from '../utils/upload';
 import { showMessage } from "react-native-flash-message";
 
-export default function AlbumExample({ navigation }) {
-  const [imageList, setImageList] = useState([]);
-  const [imageShowList, setImageShowList] = useState([]);
-  const [lastImageEndCursor, setLastImageEndCursor] = useState("");
-  const [hasNextPage, setHasNextPage] = useState(true);
+export default function Album({ navigation }) {
   const [imageTotal, setImageTotal] = useState(0);
-  const [imageUploaded, setImageUploaded] = useState(0);
   const [granted, setGranted] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
-  const initialState = { 
-    uploading: false, 
-    modalVisible: false, 
+  const isMounted = useMountedState();
+  const initialState = {
+    uploading: false,
     hasNextPage: true,
     lastImageEndCursor: "",
     imageList: [],
@@ -51,8 +44,7 @@ export default function AlbumExample({ navigation }) {
       case "UPLOADING": {
         return {
           ...state,
-          uploading: true,
-          modalVisible: true
+          uploading: true
         }
       }
       case "UPLOADED": {
@@ -65,22 +57,20 @@ export default function AlbumExample({ navigation }) {
         return {
           ...state,
           uploading: false,
-          modalVisible: false,
           imageUploaded: 0
         }
       }
       case "ERROR": {
         return {
           ...state,
-          uploading: false,
-          modalVisible: false
+          uploading: false
         }
       }
       case "RESET": {
         return initialState;
       }
       default:
-        throw new Error( `Not supported action ${action.type}` );
+        throw new Error(`Not supported action ${action.type}`);
     }
   }
   const [state, dispatch] = useReducer(imagesReducer, initialState);
@@ -153,8 +143,10 @@ export default function AlbumExample({ navigation }) {
       const imgCount = r.reduce((pre, cur) => {
         return (pre + cur.count);
       }, 0);
-      setImageTotal(imgCount);
-      getLocalPhotos();
+      if (isMounted) {
+        setImageTotal(imgCount);
+        getLocalPhotos();
+      }
     });
   };
 
@@ -169,44 +161,26 @@ export default function AlbumExample({ navigation }) {
       config.after = lastImageEndCursorRef.current;
     }
     CameraRoll.getPhotos(config)
-    .then(r => {
-      const len = r.edges.length;
-      if(len > 0){
-        setGranted(true);
-      }
-      if(r.page_info.has_next_page){
-        // setLastImageEndCursor(r.page_info.end_cursor);
-        // setHasNextPage(true);
+      .then(r => {
+        const len = r.edges.length;
+        if (len > 0) {
+          setGranted(true);
+        }
         dispatch({
           type: 'FETCH_IMG',
-          payload: { 
+          payload: {
             imageList: r.edges,
-            hasNextPage: true,
+            hasNextPage: r.page_info.has_next_page,
             lastImageEndCursor: r.page_info.end_cursor
           }
-        })
-      } else {
-        // setHasNextPage(false);
-        dispatch({
-          type: 'FETCH_IMG',
-          payload: { 
-            imageList: r.edges,
-            hasNextPage: false,
-            lastImageEndCursor: r.page_info.end_cursor //这里可能有问题
-          }
-        })
-      }
-      // setImageList(r.edges);
-      // setImageShowList(l => l.concat(imageListRef.current));
-
-      //如果是第二页之后，自动触发上传图片
-      if (uploadingRef.current) {
-        onPressBackup();
-      }
-
-    }).catch(err => {
-      console.log("getLocalPhotos error:", err);
-    });
+        });
+        //如果是第二页之后，自动触发上传图片
+        if (uploadingRef.current) {
+          onPressBackup();
+        }
+      }).catch(err => {
+        console.log("getLocalPhotos error:", err);
+      });
   };
 
   const checkExists = async (list) => {
@@ -226,24 +200,21 @@ export default function AlbumExample({ navigation }) {
         }
       }
     } catch (err) {
-      console.log('checkExists error: ',err);
-      throw new Error('checkExists 出错了');
+      console.log('album error', err);
+      if (err.response && err.response.status === 401) {
+        navigation.navigate('Login');
+      }
+      throw new Error('checkExists error!');
     }
   };
 
   const sync = () => {
-    // setLastImageEndCursor("");
-    // setImageList([]);
-    // setImageShowList([]);
-    dispatch({type: 'RESET'});
+    dispatch({ type: 'RESET' });
     getAlbums();
   }
 
   const onPressBackup = () => {
-    // setModalVisible(true);
-    // setUploading(true);
-    
-    dispatch({type: 'UPLOADING'});
+    dispatch({ type: 'UPLOADING' });
     const imagesNotUploaded = [];
     checkExists(imageListRef.current).then((list) => {
       if (list != null) {
@@ -259,10 +230,9 @@ export default function AlbumExample({ navigation }) {
           return new Promise((resolve, reject) => {
             uploadImage('upload/', p.node.image)
               .then((r) => {
-                // setImageUploaded(iu => iu + 1);
                 dispatch({
-                  type: 'UPLOADED', 
-                  payload:{'uploaded': 1}
+                  type: 'UPLOADED',
+                  payload: { 'uploaded': 1 }
                 });
                 resolve(r);
               })
@@ -273,10 +243,7 @@ export default function AlbumExample({ navigation }) {
         });
         Promise.all(promises).then(() => {
           if (!hasNextPageRef.current) {
-            // setImageUploaded(0);
-            // setModalVisible(false);
-            // setUploading(false);
-            dispatch({type: 'UPLOAD_COMPLETE'});
+            dispatch({ type: 'UPLOAD_COMPLETE' });
             showMessage({
               message: "同步完成！",
               type: "success",
@@ -291,16 +258,11 @@ export default function AlbumExample({ navigation }) {
               type: "warning",
             });
           }
-          // setModalVisible(false);
-          // setUploading(false);
-          dispatch({type: 'ERROR'});
+          dispatch({ type: 'ERROR' });
         });
       } else {
         if (!hasNextPageRef.current) {
-          // setImageUploaded(0);
-          // setModalVisible(false);
-          // setUploading(false);
-          dispatch({type: 'UPLOAD_COMPLETE'});
+          dispatch({ type: 'UPLOAD_COMPLETE' });
           showMessage({
             message: "已完成同步！",
             type: "success",
@@ -308,19 +270,16 @@ export default function AlbumExample({ navigation }) {
         } else {
           if (imageListRef.current.length > 0) {
             dispatch({
-              type: 'UPLOADED', 
-              payload:{'uploaded': imageListRef.current.length}
+              type: 'UPLOADED',
+              payload: { 'uploaded': imageListRef.current.length }
             });
-            // setImageUploaded(iu => iu + imageListRef.current.length);
           }
           getLocalPhotos();
         }
       }
     }).catch(e => {
-      console.log("捕获到错误：",e);
-      // setModalVisible(false);
-      // setUploading(false);
-      dispatch({type: 'ERROR'});
+      console.log("捕获到错误：", e);
+      dispatch({ type: 'ERROR' });
     });
   };
 
@@ -353,7 +312,7 @@ export default function AlbumExample({ navigation }) {
       <Modal
         animationType="slide"
         transparent={true}
-        visible={state.modalVisible}
+        visible={state.uploading}
         onRequestClose={() => {
           Alert.alert("Modal has been closed.");
         }}

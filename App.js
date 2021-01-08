@@ -11,9 +11,9 @@ import {
   StatusBar,
 } from 'react-native';
 import SplashScreen from 'react-native-splash-screen';
-import ToastExample from './ToastExample';
 import { clearStorage } from './utils/global-storage';
 import FlashMessage from "react-native-flash-message";
+import './utils/request';
 import MyStack from './stack-nav';
 const App: () => React$Node = () => {
   // ToastExample.show('Awesome', ToastExample.SHORT);

@@ -1,7 +1,6 @@
 import axios from 'axios';
 import DeviceInfo from 'react-native-device-info';
 import GlobalVar from '../utils/global-var.js';
-const common_url = GlobalVar.common_url; //服务器地址
 /**
  * 使用fetch实现图片上传
  * @param {string} url 接口地址
@@ -22,7 +21,7 @@ function uploadImage(url, params) {
     formData.append('fileName', params.filename);
     formData.append('fileSize', params.fileSize.toString());
     axios
-      .post(common_url + url, formData, {
+      .post(GlobalVar.common_url + url, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           // 'x-access-token': token
@@ -47,7 +46,7 @@ function uploadCheck(url, params) {
     let formData = new FormData();
     formData.append('files', JSON.stringify(params));
     axios
-      .post(common_url + url, formData, {
+      .post(GlobalVar.common_url + url, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           // 'x-access-token': token

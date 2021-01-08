@@ -1,7 +1,7 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet, ScrollView, View } from 'react-native';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
-import AlbumExample from './AlbumExample';
+import Album from './album';
 export default function PhotoWall({ navigation }) {
   return (
     <>
@@ -10,7 +10,7 @@ export default function PhotoWall({ navigation }) {
           contentInsetAdjustmentBehavior="automatic"
           style={styles.scrollView}>
           <View style={styles.body}>
-            <AlbumExample navigation={navigation} />
+            <Album navigation={navigation} />
           </View>
         </View>
       </SafeAreaView>
