@@ -28,7 +28,6 @@ function uploadImage(url, params) {
         },
       })
       .then(function (response) {
-        // console.log(response.data);
         resolve(response);
       })
       .catch(function (error) {

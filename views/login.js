@@ -32,7 +32,6 @@ export default function Login({ navigation }) {
     })
     .catch(function (error) {
       // error
-      console.log('login error: ', error);
       ToastExample.show('该号码已过期！', ToastExample.LONG);
     });
   };

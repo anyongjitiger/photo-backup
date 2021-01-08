@@ -200,7 +200,6 @@ export default function Album({ navigation }) {
         }
       }
     } catch (err) {
-      console.log('album error', err);
       if (err.response && err.response.status === 401) {
         navigation.navigate('Login');
       }

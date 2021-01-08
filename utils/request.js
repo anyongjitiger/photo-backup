@@ -8,7 +8,6 @@ axios.interceptors.response.use(
         return response;
     },
     error => {
-        console.log(error.message);
         if (error.message.includes('timeout')) {   // 判断请求异常信息中是否含有超时timeout字符串
             showMessage({
                 message: "服务器连接失败！",
