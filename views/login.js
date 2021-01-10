@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {StyleSheet, Button, TextInput, View} from 'react-native';
 import axios from 'axios';
 import ToastExample from '../ToastExample';
-import GlobalVar, { setCommonUrl } from '../utils/global-var.js';
-import { storeData } from '../utils/global-storage';
-let common_url = GlobalVar.common_url;
+// import GlobalVar, { setCommonUrl } from '../utils/global-var.js';
+import { setData, getData } from '../utils/global-storage';
 export default function Login({ navigation }) {
+  // let common_url = GlobalVar.common_url;
   const [pin, setPin] = useState('');
-  const [url, setUrl] = useState(common_url);
+  const [url, setUrl] = useState('');
   const [urlChanged, setUrlChanged] = useState(false);
+  useEffect(() => {
+    getData('common_url').then((_url) => {
+      setUrl(_url);
+    });
+  }, []);
   const changePin = (event) => {
     setPin(event.nativeEvent.text);
   };
@@ -18,27 +23,32 @@ export default function Login({ navigation }) {
   };
   const login = () => {
     axios
-    .post(common_url + 'login', {
+      .post(url + 'login', {
       pin: pin,
     })
     .then((res) => {
       if (res.status === 200) {
         const _token = res.data.token;
-        storeData(_token);
-        axios.defaults.headers.common['Authorization'] = _token;
-        setPin('');
-        navigation.navigate('PhotoWall');
+        setData('auth_token', _token).then(v => {
+          axios.defaults.headers.common['Authorization'] = _token;
+          setPin('');
+          navigation.navigate('PhotoWall');
+        });
       }
     })
-    .catch(function (error) {
-      // error
+      .catch(function (error) {
       ToastExample.show('该号码已过期！', ToastExample.LONG);
     });
   };
   const onPress = () => {
     if (urlChanged) {
-      setCommonUrl(url).then((r) => {
-        common_url = r;
+      // setCommonUrl(url).then((r) => {
+      //   common_url = r;
+      //   login();
+      // });
+      setData('common_url', url).then((r) => {
+        // common_url = r;
+        setUrl(r);
         login();
       });
     } else {
