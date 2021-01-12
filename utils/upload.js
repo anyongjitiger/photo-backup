@@ -55,7 +55,6 @@ function uploadCheck(url, params) {
         resolve(response.data);
       })
       .catch(function (error) {
-        // error
         reject(error);
       })
       .then(function () {

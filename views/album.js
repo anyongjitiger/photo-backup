@@ -1,5 +1,5 @@
 // eslint-disable-next-line prettier/prettier
-import React, { useState, useEffect, useRef, useReducer } from 'react';
+import React, { useState, useEffect, useReducer } from 'react';
 import {
   PermissionsAndroid,
   StyleSheet,
@@ -12,6 +12,7 @@ import {
   Modal,
   Text,
 } from 'react-native';
+import useDeepCompareEffect from 'use-deep-compare-effect';
 import useMountedState from 'react-use/lib/useMountedState';
 import CameraRoll from "@react-native-community/cameraroll";
 import * as Progress from 'react-native-progress';
@@ -19,8 +20,12 @@ import { uploadImage, uploadCheck } from '../utils/upload';
 import { showMessage } from "react-native-flash-message";
 
 export default function Album({ navigation }) {
+  const [readPermission, setReadPermission] = useState(false);
+  const [visitAlbumsTimes, setVisitAlbumsTimes] = useState(0);
   const [imageTotal, setImageTotal] = useState(0);
+  const [uploadedPages, setUploadedPages] = useState(0);
   const [granted, setGranted] = useState(false);
+  const [imagesNotUploaded, setImagesNotUploaded] = useState([]);
   const isMounted = useMountedState();
   const initialState = {
     uploading: false,
@@ -30,39 +35,39 @@ export default function Album({ navigation }) {
     imageShowList: [],
     imageUploaded: 0
   };
-  const imagesReducer = (state, action) => {
+  const imagesReducer = (_state, action) => {
     switch (action.type) {
       case "FETCH_IMG": {
         return {
-          ...state,
+          ..._state,
           imageList: action.payload.imageList,
-          imageShowList: state.imageShowList.concat(action.payload.imageList),
+          imageShowList: _state.imageShowList.concat(action.payload.imageList),
           hasNextPage: action.payload.hasNextPage,
           lastImageEndCursor: action.payload.lastImageEndCursor
         };
       }
       case "UPLOADING": {
         return {
-          ...state,
+          ..._state,
           uploading: true
         }
       }
       case "UPLOADED": {
         return {
-          ...state,
-          imageUploaded: state.imageUploaded + action.payload.uploaded
+          ..._state,
+          imageUploaded: _state.imageUploaded + action.payload.uploaded
         }
       }
       case "UPLOAD_COMPLETE": {
         return {
-          ...state,
+          ..._state,
           uploading: false,
-          imageUploaded: 0
+          // imageUploaded: 0
         }
       }
       case "ERROR": {
         return {
-          ...state,
+          ..._state,
           uploading: false
         }
       }
@@ -75,29 +80,23 @@ export default function Album({ navigation }) {
   }
   const [state, dispatch] = useReducer(imagesReducer, initialState);
 
-  const uploadingRef = useRef(state.uploading);
-  const lastImageEndCursorRef = useRef(state.lastImageEndCursor);
-  const hasNextPageRef = useRef(state.hasNextPage);
-  const imageListRef = useRef(state.imageList);
-
   useEffect(() => {
     if (Platform.OS === 'android') {
       requestReadPermission();
     } else {
-      getAlbums();
+      // getAlbums();
+      setReadPermission(true);
     }
   }, []);
-
-  useEffect(() => {
-    lastImageEndCursorRef.current = state.lastImageEndCursor;
-    imageListRef.current = state.imageList;
-    hasNextPageRef.current = state.hasNextPage;
-    uploadingRef.current = state.uploading;
-  });
 
   const goBack = () => {
     navigation.goBack();
   };
+
+  const sync = () => {
+    setVisitAlbumsTimes(v => v + 1);
+    dispatch({ type: 'RESET' });
+  }
 
   const requestReadPermission = async () => {
     try {
@@ -109,7 +108,8 @@ export default function Album({ navigation }) {
         },
       );
       if (_granted === PermissionsAndroid.RESULTS.GRANTED) {
-        getAlbums();
+        // getAlbums();
+        setReadPermission(true);
       } else {
         console.log('获取读写权限失败');
         Alert.alert(
@@ -137,150 +137,160 @@ export default function Album({ navigation }) {
       console.log(err.toString());
     }
   };
-
-  const getAlbums = () => {
-    CameraRoll.getAlbums({ 'assetType': 'All' }).then(r => {
-      const imgCount = r.reduce((pre, cur) => {
-        return (pre + cur.count);
-      }, 0);
-      if (isMounted) {
-        setImageTotal(imgCount);
-        getLocalPhotos();
-      }
-    });
-  };
-
-  const getLocalPhotos = () => {
-    const config = {
-      first: 12,
-      assetType: 'All',
-      // groupName: 'sexy',
-      include: ['filename', 'fileSize']
-    };
-    if (lastImageEndCursorRef.current !== "") {
-      config.after = lastImageEndCursorRef.current;
-    }
-    CameraRoll.getPhotos(config)
-      .then(r => {
-        const len = r.edges.length;
-        if (len > 0) {
-          setGranted(true);
+  useEffect(() => {
+    const getAlbums = () => {
+      CameraRoll.getAlbums({ 'assetType': 'All' }).then(r => {
+        const imgCount = r.reduce((pre, cur) => {
+          return (pre + cur.count);
+        }, 0);
+        if (isMounted) {
+          setImageTotal(imgCount);
         }
-        dispatch({
-          type: 'FETCH_IMG',
-          payload: {
-            imageList: r.edges,
-            hasNextPage: r.page_info.has_next_page,
-            lastImageEndCursor: r.page_info.end_cursor
-          }
-        });
-        //如果是第二页之后，自动触发上传图片
-        if (uploadingRef.current) {
-          onPressBackup();
-        }
-      }).catch(err => {
-        console.log("getLocalPhotos error:", err);
       });
-  };
-
-  const checkExists = async (list) => {
-    const _list = list.map((item) => {
-      return {
-        "FileName": item.node.image.filename,
-        "FileSize": item.node.image.fileSize.toString()
-      }
-    })
-    try {
-      const value = await uploadCheck('uploadCheck/', _list);
-      if (value.State == 1) {
-        if (value.Msg === 'no data') {
-          return null;
-        } else {
-          return value.Data;
-        }
-      }
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        navigation.navigate('Login');
-      }
-      throw new Error('checkExists error!');
+    };
+    if (readPermission) {
+      getAlbums();
     }
-  };
+  }, [readPermission, visitAlbumsTimes]);
 
-  const sync = () => {
-    dispatch({ type: 'RESET' });
-    getAlbums();
-  }
-
-  const onPressBackup = () => {
-    dispatch({ type: 'UPLOADING' });
-    const imagesNotUploaded = [];
-    checkExists(imageListRef.current).then((list) => {
-      if (list != null) {
-        imageListRef.current.forEach(item => {
-          let img = item.node.image;
-          JSON.parse(list).forEach(element => {
-            if (element.FileName == img.filename && element.FileSize == img.fileSize) {
-              imagesNotUploaded.push(item);
+  useEffect(() => {
+    const getLocalPhotos = () => {
+      const config = {
+        first: 12,
+        assetType: 'All',
+        // groupName: 'sexy',
+        include: ['filename', 'fileSize']
+      };
+      if (state.lastImageEndCursor !== "" && state.lastImageEndCursor !== "last") {
+        config.after = state.lastImageEndCursor;
+      }
+      CameraRoll.getPhotos(config)
+        .then(r => {
+          const len = r.edges.length;
+          if (len > 0) {
+            setGranted(true);
+          }
+          dispatch({
+            type: 'FETCH_IMG',
+            payload: {
+              imageList: r.edges,
+              hasNextPage: r.page_info.has_next_page,
+              lastImageEndCursor: r.page_info.end_cursor || 'last'
             }
-          })
-        });
-        const promises = imagesNotUploaded.map((p) => {
-          return new Promise((resolve, reject) => {
-            uploadImage('upload/', p.node.image)
-              .then((r) => {
-                dispatch({
-                  type: 'UPLOADED',
-                  payload: { 'uploaded': 1 }
-                });
-                resolve(r);
-              })
-              .catch((err) => {
-                reject(err);
-              });
           });
+        }).catch(err => {
+          console.log("getLocalPhotos error:", err);
         });
-        Promise.all(promises).then(() => {
-          if (!hasNextPageRef.current) {
+    };
+    if (imageTotal > 0 && (state.lastImageEndCursor != undefined)) {
+      getLocalPhotos();
+    }
+  }, [uploadedPages, imageTotal, visitAlbumsTimes]);
+
+  useDeepCompareEffect(() => {
+    const checkExists = async (list) => {
+      const _list = list.map((item) => {
+        return {
+          "FileName": item.node.image.filename,
+          "FileSize": item.node.image.fileSize.toString()
+        }
+      })
+      try {
+        const value = await uploadCheck('uploadCheck/', _list);
+        if (value.State == 1) {
+          if (value.Msg === 'no data') {
+            return null;
+          } else {
+            return value.Data;
+          }
+        }
+      } catch (err) {
+        if (err.response && err.response.status === 401) {
+          navigation.navigate('Login');
+        }
+        throw new Error('checkExists error!');
+      }
+    };
+    if (state.uploading && state.imageList.length > 0) {
+      checkExists(state.imageList).then((list) => {
+        const notUploaded = [];
+        if (list != null) {
+          state.imageList.forEach(item => {
+            let img = item.node.image;
+            JSON.parse(list).forEach(element => {
+              if (element.FileName == img.filename && element.FileSize == img.fileSize) {
+                notUploaded.push(item);
+              }
+            })
+          });
+          setImagesNotUploaded(notUploaded);
+        } else {
+          if (!state.hasNextPage) {
             dispatch({ type: 'UPLOAD_COMPLETE' });
             showMessage({
-              message: "同步完成！",
+              message: "已完成同步！",
               type: "success",
             });
           } else {
-            getLocalPhotos();
+            if (state.imageList.length > 0) {
+              setUploadedPages(n => n + 1);
+              dispatch({
+                type: 'UPLOADED',
+                payload: { 'uploaded': state.imageList.length }
+              });
+            }
           }
-        }).catch(function (reason) {
-          if (reason.message === 'Network Error') {
-            showMessage({
-              message: "网络连接失败，请检查服务器连接！",
-              type: "warning",
+        }
+      }).catch(e => {
+        console.log("捕获到错误：", e);
+        dispatch({ type: 'ERROR' });
+      });
+    }
+  }, [state.imageList, state.uploading]);
+
+  useDeepCompareEffect(() => {
+    const backup = () => {
+      let promises = imagesNotUploaded.map((p) => {
+        return new Promise((resolve, reject) => {
+          uploadImage('upload/', p.node.image)
+            .then((r) => {
+              dispatch({
+                type: 'UPLOADED',
+                payload: { 'uploaded': 1 }
+              });
+              resolve(r);
+            })
+            .catch((err) => {
+              reject(err);
             });
-          }
-          dispatch({ type: 'ERROR' });
         });
-      } else {
-        if (!hasNextPageRef.current) {
+      });
+      Promise.all(promises).then(() => {
+        // setImagesNotUploaded([]);
+        if (!state.hasNextPage) {
           dispatch({ type: 'UPLOAD_COMPLETE' });
           showMessage({
-            message: "已完成同步！",
+            message: "同步完成！",
             type: "success",
           });
         } else {
-          if (imageListRef.current.length > 0) {
-            dispatch({
-              type: 'UPLOADED',
-              payload: { 'uploaded': imageListRef.current.length }
-            });
-          }
-          getLocalPhotos();
+          promises = [];
+          setUploadedPages(n => n + 1);
         }
-      }
-    }).catch(e => {
-      console.log("捕获到错误：", e);
-      dispatch({ type: 'ERROR' });
-    });
-  };
+      }).catch(function (reason) {
+        if (reason.message === 'Network Error') {
+          showMessage({
+            message: "网络连接失败，请检查服务器连接！",
+            type: "warning",
+          });
+        }
+        dispatch({ type: 'ERROR' });
+      });
+    };
+    if (state.uploading && imagesNotUploaded.length > 0) {
+      backup();
+    }
+  }, [imagesNotUploaded]);
 
   const Images = state.imageShowList.map((p, index) => {
     return (
@@ -294,7 +304,7 @@ export default function Album({ navigation }) {
     <View>
       <View style={{ height: 80 }}>
         <Button
-          onPress={onPressBackup}
+          onPress={() => { dispatch({ type: 'UPLOADING' }) }}
           title="上传"
           color="#841584"
           disabled={!granted}

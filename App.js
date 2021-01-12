@@ -11,7 +11,7 @@ import {
   StatusBar,
 } from 'react-native';
 import SplashScreen from 'react-native-splash-screen';
-import { clearStorage } from './utils/global-storage';
+import { removeData, clearStorage } from './utils/global-storage';
 import FlashMessage from "react-native-flash-message";
 import './utils/request';
 import MyStack from './stack-nav';
@@ -20,6 +20,9 @@ const App: () => React$Node = () => {
   useEffect(() => {
     SplashScreen.hide();
     // clearStorage();
+  /* removeData('auth_token').then(() => {
+    console.log("clear token");
+  }); */
   });
   return (
     <>

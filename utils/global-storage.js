@@ -20,7 +20,13 @@ const getData = async (key) => {
   }
 };
 
-
+const removeData = async (key) => {
+  try {
+    await AsyncStorage.removeItem(key)
+  } catch (e) {
+    // remove error
+  }
+}
 
 const clearStorage = async () => {
   try {
@@ -29,4 +35,4 @@ const clearStorage = async () => {
   }
 }
 
-export { setData, getData, clearStorage };
+export { setData, getData, removeData, clearStorage };
