@@ -25,6 +25,8 @@ export default function Album({ navigation }) {
   const [imageTotal, setImageTotal] = useState(0);
   const [uploadedPages, setUploadedPages] = useState(0);
   const [imagesNotUploaded, setImagesNotUploaded] = useState([]);
+  const pageSize = 21;
+  const [currentPage, setCurrentPage] = useState(1);
   const initialState = {
     uploading: false,
     hasNextPage: true,
@@ -77,6 +79,7 @@ export default function Album({ navigation }) {
 
   const sync = () => {
     setVisitAlbumsTimes(v => v + 1);
+    setCurrentPage(1);
     dispatch({ type: 'RESET' });
   }
 
@@ -145,7 +148,7 @@ export default function Album({ navigation }) {
   useEffect(() => {
     const getLocalPhotos = () => {
       const config = {
-        first: 12,
+        first: pageSize,
         assetType: 'All',
         // groupName: 'sexy',
         include: ['filename', 'fileSize']
@@ -280,7 +283,17 @@ export default function Album({ navigation }) {
     }
   }, [imagesNotUploaded]);
 
-  const Images = state.imageShowList.map((p, index) => {
+  const _contentViewScroll = (e) => {
+    var offsetY = e.nativeEvent.contentOffset.y; // 已经滚动的距离
+    var oriageScrollHeight = e.nativeEvent.layoutMeasurement.height; // 可滚动的可见区域高度
+    var contentSizeHeight = Math.round(e.nativeEvent.contentSize.height); // 可滚动的总高度
+    if (Math.round(offsetY + oriageScrollHeight) >= contentSizeHeight) {
+      console.log(offsetY, oriageScrollHeight, contentSizeHeight);
+      setCurrentPage(n => n + 1);
+    }
+  }
+
+  const Images = state.imageShowList.slice(0, pageSize * currentPage - 1).map((p, index) => {
     return (
       <View style={styles.photoView} key={index}>
         <Image style={styles.photo} source={{ uri: p.node.image.uri }} />
@@ -290,19 +303,23 @@ export default function Album({ navigation }) {
 
   return (
     <View>
-      <View style={{ height: 80 }}>
-        <Button
-          onPress={() => { dispatch({ type: 'UPLOADING' }) }}
-          title="上传"
-          color="#841584"
-          disabled={!granted}
-        />
-        <Button
-          onPress={sync}
-          title="同步相册"
-        />
+      <View style={styles.buttons}>
+        <View style={{ flex: 1 }}>
+          <Button
+            onPress={sync}
+            title="同步相册"
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            onPress={() => { dispatch({ type: 'UPLOADING' }) }}
+            title="上传"
+            color="#841584"
+            disabled={!granted}
+          />
+        </View>
       </View>
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} onScroll={_contentViewScroll} scrollEventThrottle={50}>
         <View style={styles.photos}>{Images}</View>
       </ScrollView>
       <Modal animationType="slide" transparent={true} visible={state.uploading}>
@@ -318,6 +335,11 @@ export default function Album({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  buttons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
   scrollView: {
     backgroundColor: '#1E1E1E',
   },
@@ -329,8 +351,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   photoView: {
-    marginTop: 10,
-    width: '33%',
+    marginTop: 0,
+    width: '33.3%',
   },
   photo: {
     width: '100%',
