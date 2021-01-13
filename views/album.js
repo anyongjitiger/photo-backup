@@ -288,7 +288,6 @@ export default function Album({ navigation }) {
     var oriageScrollHeight = e.nativeEvent.layoutMeasurement.height; // 可滚动的可见区域高度
     var contentSizeHeight = Math.round(e.nativeEvent.contentSize.height); // 可滚动的总高度
     if (Math.round(offsetY + oriageScrollHeight) >= contentSizeHeight) {
-      console.log(offsetY, oriageScrollHeight, contentSizeHeight);
       setCurrentPage(n => n + 1);
     }
   }
