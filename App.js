@@ -16,7 +16,6 @@ import FlashMessage from "react-native-flash-message";
 import './utils/request';
 import MyStack from './stack-nav';
 const App: () => React$Node = () => {
-  // ToastExample.show('Awesome', ToastExample.SHORT);
   useEffect(() => {
     SplashScreen.hide();
     // clearStorage();

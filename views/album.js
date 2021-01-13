@@ -13,7 +13,6 @@ import {
   Text,
 } from 'react-native';
 import useDeepCompareEffect from 'use-deep-compare-effect';
-import useMountedState from 'react-use/lib/useMountedState';
 import CameraRoll from "@react-native-community/cameraroll";
 import * as Progress from 'react-native-progress';
 import { uploadImage, uploadCheck } from '../utils/upload';
@@ -21,19 +20,18 @@ import { showMessage } from "react-native-flash-message";
 
 export default function Album({ navigation }) {
   const [readPermission, setReadPermission] = useState(false);
+  const [granted, setGranted] = useState(false);
   const [visitAlbumsTimes, setVisitAlbumsTimes] = useState(0);
   const [imageTotal, setImageTotal] = useState(0);
   const [uploadedPages, setUploadedPages] = useState(0);
-  const [granted, setGranted] = useState(false);
   const [imagesNotUploaded, setImagesNotUploaded] = useState([]);
-  const isMounted = useMountedState();
   const initialState = {
     uploading: false,
     hasNextPage: true,
     lastImageEndCursor: "",
     imageList: [],
     imageShowList: [],
-    imageUploaded: 0
+    imageUploadedCount: 0
   };
   const imagesReducer = (_state, action) => {
     switch (action.type) {
@@ -55,17 +53,10 @@ export default function Album({ navigation }) {
       case "UPLOADED": {
         return {
           ..._state,
-          imageUploaded: _state.imageUploaded + action.payload.uploaded
+          imageUploadedCount: _state.imageUploadedCount + action.payload.uploaded
         }
       }
       case "UPLOAD_COMPLETE": {
-        return {
-          ..._state,
-          uploading: false,
-          // imageUploaded: 0
-        }
-      }
-      case "ERROR": {
         return {
           ..._state,
           uploading: false
@@ -79,15 +70,6 @@ export default function Album({ navigation }) {
     }
   }
   const [state, dispatch] = useReducer(imagesReducer, initialState);
-
-  useEffect(() => {
-    if (Platform.OS === 'android') {
-      requestReadPermission();
-    } else {
-      // getAlbums();
-      setReadPermission(true);
-    }
-  }, []);
 
   const goBack = () => {
     navigation.goBack();
@@ -137,15 +119,22 @@ export default function Album({ navigation }) {
       console.log(err.toString());
     }
   };
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      requestReadPermission();
+    } else {
+      setReadPermission(true);
+    }
+  }, []);
+
   useEffect(() => {
     const getAlbums = () => {
       CameraRoll.getAlbums({ 'assetType': 'All' }).then(r => {
         const imgCount = r.reduce((pre, cur) => {
           return (pre + cur.count);
         }, 0);
-        if (isMounted) {
-          setImageTotal(imgCount);
-        }
+        setImageTotal(imgCount);
       });
     };
     if (readPermission) {
@@ -205,6 +194,7 @@ export default function Album({ navigation }) {
           }
         }
       } catch (err) {
+        console.log(err);
         if (err.response && err.response.status === 401) {
           navigation.navigate('Login');
         }
@@ -243,7 +233,7 @@ export default function Album({ navigation }) {
         }
       }).catch(e => {
         console.log("捕获到错误：", e);
-        dispatch({ type: 'ERROR' });
+        dispatch({ type: 'UPLOAD_COMPLETE' });
       });
     }
   }, [state.imageList, state.uploading]);
@@ -266,7 +256,6 @@ export default function Album({ navigation }) {
         });
       });
       Promise.all(promises).then(() => {
-        // setImagesNotUploaded([]);
         if (!state.hasNextPage) {
           dispatch({ type: 'UPLOAD_COMPLETE' });
           showMessage({
@@ -274,7 +263,6 @@ export default function Album({ navigation }) {
             type: "success",
           });
         } else {
-          promises = [];
           setUploadedPages(n => n + 1);
         }
       }).catch(function (reason) {
@@ -284,7 +272,7 @@ export default function Album({ navigation }) {
             type: "warning",
           });
         }
-        dispatch({ type: 'ERROR' });
+        dispatch({ type: 'UPLOAD_COMPLETE' });
       });
     };
     if (state.uploading && imagesNotUploaded.length > 0) {
@@ -317,19 +305,11 @@ export default function Album({ navigation }) {
       <ScrollView style={styles.scrollView}>
         <View style={styles.photos}>{Images}</View>
       </ScrollView>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={state.uploading}
-        onRequestClose={() => {
-          Alert.alert("Modal has been closed.");
-        }}
-      >
+      <Modal animationType="slide" transparent={true} visible={state.uploading}>
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text>{state.imageUploaded} / {imageTotal}</Text>
-            <Progress.Bar progress={state.imageUploaded / imageTotal} width={200} />
+            <Text>{state.imageUploadedCount} / {imageTotal}</Text>
+            <Progress.Bar progress={state.imageUploadedCount / imageTotal} width={200} />
           </View>
         </View>
       </Modal>
@@ -356,7 +336,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 120,
   },
-
   centeredView: {
     flex: 1,
     justifyContent: "center",

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {StyleSheet, Button, TextInput, View} from 'react-native';
 import axios from 'axios';
-import ToastExample from '../ToastExample';
-// import GlobalVar, { setCommonUrl } from '../utils/global-var.js';
+import { setCommonUrl } from '../utils/global-var.js';
 import { setData, getData } from '../utils/global-storage';
+import { showMessage } from "react-native-flash-message";
 export default function Login({ navigation }) {
-  // let common_url = GlobalVar.common_url;
   const [pin, setPin] = useState('');
   const [url, setUrl] = useState('');
   const [urlChanged, setUrlChanged] = useState(false);
@@ -34,27 +33,30 @@ export default function Login({ navigation }) {
           setPin('');
           navigation.navigate('PhotoWall');
         });
+        if (urlChanged) {
+          setData('common_url', url).then((r) => {
+            console.log("保存地址：", url);
+          });
+        }
       }
     })
-      .catch(function (error) {
-      ToastExample.show('该号码已过期！', ToastExample.LONG);
+    .catch(function (error) {
+      console.log("login error:", error);
+      showMessage({
+        message: "登录失败！",
+        type: "warning",
+      });
     });
   };
   const onPress = () => {
     if (urlChanged) {
-      // setCommonUrl(url).then((r) => {
-      //   common_url = r;
-      //   login();
-      // });
-      setData('common_url', url).then((r) => {
-        // common_url = r;
+      setCommonUrl(url).then((r) => {
         setUrl(r);
         login();
       });
     } else {
       login();
     }
-
   };
   return (
     <View style={styles.view}>

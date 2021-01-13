@@ -8,7 +8,7 @@ getData('common_url').then((_url) => {
 export default CONFIG;
 export function setCommonUrl(url) {
     return new Promise(function (resolve, reject) {
-        CONFIG.common_url = "http://" + url + ":8000/";
-        resolve(CONFIG.common_url);
+        CONFIG.common_url = url;
+        resolve(url);
     })
 }
