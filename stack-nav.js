@@ -3,6 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import PhotoWall from './views/photo-wall';
 import Login from './views/login';
 import HomeScreen from './views/home';
+import Image from './views/Image';
 import { NavigationContainer } from '@react-navigation/native';
 
 const Stack = createStackNavigator();
@@ -18,6 +19,7 @@ function MyStack() {
           options={{ title: '相册' }}
         />
         <Stack.Screen name="Login" component={Login} options={{ title: '设置' }} />
+        <Stack.Screen name="Image" component={Image} options={{ title: '图片预览' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

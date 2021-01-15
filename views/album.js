@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
   Text,
+  TouchableOpacity,
 } from 'react-native';
 import useDeepCompareEffect from 'use-deep-compare-effect';
 import CameraRoll from "@react-native-community/cameraroll";
@@ -23,6 +24,7 @@ export default function Album({ navigation }) {
   const [granted, setGranted] = useState(false);
   const [visitAlbumsTimes, setVisitAlbumsTimes] = useState(0);
   const [imageTotal, setImageTotal] = useState(0);
+  const [allImages, setAllImages] = useState([]);
   const [uploadedPages, setUploadedPages] = useState(0);
   const [imagesNotUploaded, setImagesNotUploaded] = useState([]);
   const pageSize = 21;
@@ -44,6 +46,13 @@ export default function Album({ navigation }) {
           imageShowList: _state.imageShowList.concat(action.payload.imageList),
           hasNextPage: action.payload.hasNextPage,
           lastImageEndCursor: action.payload.lastImageEndCursor
+        };
+      }
+      case "NEXT_PAGE": {
+        return {
+          ..._state,
+          imageList: action.payload.imageList,
+          hasNextPage: action.payload.hasNextPage,
         };
       }
       case "UPLOADING": {
@@ -140,12 +149,29 @@ export default function Album({ navigation }) {
         setImageTotal(imgCount);
       });
     };
+    const getAllPhotos = () => {
+      const config = {
+        first: 9999,
+        assetType: 'All',
+        // groupName: 'sexy',
+        include: ['filename', 'fileSize']
+      };
+      CameraRoll.getPhotos(config).then(r => {
+        const len = r.edges.length;
+        if (len > 0) {
+          setGranted(true);
+          setImageTotal(len)
+          setAllImages(r.edges);
+        }
+      });
+    }
     if (readPermission) {
-      getAlbums();
+      // getAlbums();
+      getAllPhotos();
     }
   }, [readPermission, visitAlbumsTimes]);
 
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     const getLocalPhotos = () => {
       const config = {
         first: pageSize,
@@ -174,10 +200,18 @@ export default function Album({ navigation }) {
           console.log("getLocalPhotos error:", err);
         });
     };
-    if (imageTotal > 0 && (state.lastImageEndCursor != undefined)) {
+    /* if (imageTotal > 0 && (state.lastImageEndCursor != undefined)) {
       getLocalPhotos();
-    }
-  }, [uploadedPages, imageTotal, visitAlbumsTimes]);
+    } */
+    dispatch({
+      type: 'NEXT_PAGE',
+      payload: {
+        imageList: allImages.slice(uploadedPages * pageSize, (uploadedPages + 1) * pageSize),
+        hasNextPage: (uploadedPages + 1) * pageSize < imageTotal
+      }
+    });
+
+  }, [allImages, uploadedPages, imageTotal, visitAlbumsTimes]);
 
   useDeepCompareEffect(() => {
     const checkExists = async (list) => {
@@ -197,7 +231,6 @@ export default function Album({ navigation }) {
           }
         }
       } catch (err) {
-        console.log(err);
         if (err.response && err.response.status === 401) {
           navigation.navigate('Login');
         }
@@ -292,11 +325,18 @@ export default function Album({ navigation }) {
     }
   }
 
-  const Images = state.imageShowList.slice(0, pageSize * currentPage - 1).map((p, index) => {
+  const Images = allImages.slice(0, pageSize * currentPage - 1).map((p, index) => {
     return (
-      <View style={styles.photoView} key={index}>
-        <Image style={styles.photo} source={{ uri: p.node.image.uri }} />
-      </View>
+      <TouchableOpacity key={index} style={styles.photoView} onPress={() => {
+        navigation.navigate('Image', {
+          name: p.node.image.filename,
+          uri: p.node.image.uri,
+        });
+      }}>
+        <View key={index}>
+          <Image style={styles.photo} source={{ uri: p.node.image.uri }} />
+        </View>
+      </TouchableOpacity>
     );
   });
 
@@ -350,7 +390,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   photoView: {
-    marginTop: 0,
     width: '33.3%',
   },
   photo: {
