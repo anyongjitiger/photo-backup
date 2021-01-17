@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { showMessage } from "react-native-flash-message";
-axios.defaults.timeout = 10000;
+axios.defaults.timeout = 100000;
 axios.defaults.retry = 3;
 axios.defaults.retryDelay = 2000;
 axios.interceptors.response.use(
