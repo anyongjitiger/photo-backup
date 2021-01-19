@@ -12,6 +12,7 @@ import {
   Modal,
   Text,
   TouchableOpacity,
+  ActivityIndicator
 } from 'react-native';
 import useDeepCompareEffect from 'use-deep-compare-effect';
 import CameraRoll from "@react-native-community/cameraroll";
@@ -25,6 +26,7 @@ export default function Album({ navigation }) {
   const [visitAlbumsTimes, setVisitAlbumsTimes] = useState(0);
   const [imageTotal, setImageTotal] = useState(0);
   const [allImages, setAllImages] = useState([]);
+  const [animating, setAnimating] = useState(false);
   const [uploadedPages, setUploadedPages] = useState(0);
   const [imagesNotUploaded, setImagesNotUploaded] = useState([]);
   const pageSize = 21;
@@ -150,6 +152,7 @@ export default function Album({ navigation }) {
       });
     };
     const getAllPhotos = () => {
+      setAnimating(true);
       const config = {
         first: 9999,
         assetType: 'All',
@@ -163,6 +166,8 @@ export default function Album({ navigation }) {
           setImageTotal(len)
           setAllImages(r.edges);
         }
+      }).finally(() => {
+        setAnimating(false);
       });
     }
     if (readPermission) {
@@ -369,6 +374,9 @@ export default function Album({ navigation }) {
           </View>
         </View>
       </Modal>
+      <View style={styles.centering}>
+        <ActivityIndicator size="large" color="#333333" animating={animating} />
+      </View>
     </View>
   );
 }
@@ -416,5 +424,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5
+  },
+  centering: {
+    position: 'absolute',
+    width: '100%',
+    height: 500,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
 });
